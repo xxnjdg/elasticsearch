@@ -181,6 +181,7 @@ public final class IndexScopedSettings extends AbstractScopedSettings {
 
     public static final IndexScopedSettings DEFAULT_SCOPED_SETTINGS = new IndexScopedSettings(Settings.EMPTY, BUILT_IN_INDEX_SETTINGS);
 
+    //settingsSet = org.elasticsearch.common.settings.SettingsModule.indexSettings
     public IndexScopedSettings(Settings settings, Set<Setting<?>> settingsSet) {
         super(settings, settingsSet, Collections.emptySet(), Property.IndexScope);
     }

@@ -93,6 +93,7 @@ final class Bootstrap {
     }
 
     /** initialize native resources */
+    //false true true
     public static void initializeNatives(Path tmpFile, boolean mlockAll, boolean systemCallFilter, boolean ctrlHandler) {
         final Logger logger = LogManager.getLogger(Bootstrap.class);
 
@@ -102,6 +103,7 @@ final class Bootstrap {
         }
 
         // enable system call filter
+        // TODO: 2021/3/26 xxnjdg 不知道是什么
         if (systemCallFilter) {
             Natives.tryInstallSystemCallFilter(tmpFile);
         }
@@ -141,6 +143,7 @@ final class Bootstrap {
             // we've already logged this.
         }
 
+        //尝试设置最大线程数 最大虚拟内存 最大文件数
         Natives.trySetMaxNumberOfThreads();
         Natives.trySetMaxSizeVirtualMemory();
         Natives.trySetMaxFileSize();
@@ -157,6 +160,7 @@ final class Bootstrap {
     }
 
     private void setup(boolean addShutdownHook, Environment environment) throws BootstrapException {
+        //获取属性
         Settings settings = environment.settings();
 
         try {
@@ -198,6 +202,7 @@ final class Bootstrap {
 
         try {
             // look for jar hell
+            //检测jar版本冲突如
             final Logger logger = LogManager.getLogger(JarHell.class);
             JarHell.checkJarHell(logger::debug);
         } catch (IOException | URISyntaxException e) {
@@ -208,6 +213,7 @@ final class Bootstrap {
         IfConfig.logIfNecessary();
 
         // install SM after natives, shutdown hooks, etc.
+        //设置安全权限
         try {
             Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
         } catch (IOException | NoSuchAlgorithmException e) {
@@ -340,7 +346,13 @@ final class Bootstrap {
 
         INSTANCE = new Bootstrap();
 
+        //读取 elasticsearch-7.12.0/config/elasticsearch.keystore 下文件，封装成SecureSettings返回
+        //一般参数可以在 elasticsearch-7.12.0/config/elasticsearch.yml 这个文件设置
+        //但是如果你不想把这些设置公开可把他们加密放到 elasticsearch.keystore 上，默认这个文件是没有密码，且只有一个默认参数
+        //可参考 https://blog.csdn.net/happylee6688/article/details/44650517
+        //https://learnku.com/docs/elasticsearch73/7.3/322-secure-settings/6591
         final SecureSettings keystore = loadSecureSettings(initialEnv);
+        //重新设置环境
         final Environment environment = createEnvironment(pidFile, keystore, initialEnv.settings(), initialEnv.configFile());
 
         LogConfigurator.setNodeName(Node.NODE_NAME_SETTING.get(environment.settings()));

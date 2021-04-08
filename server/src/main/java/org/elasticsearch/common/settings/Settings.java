@@ -73,9 +73,11 @@ public final class Settings implements ToXContentFragment {
     public static final Settings EMPTY = new Builder().build();
 
     /** The raw settings from the full key to raw string value. */
+    //普通属性在这
     private final Map<String, Object> settings;
 
     /** The secure settings storage associated with these settings. */
+    //elasticsearch.keystore 读取的属性在这
     private final SecureSettings secureSettings;
 
     /** The first level of setting names. This is constructed lazily in {@link #names()}. */

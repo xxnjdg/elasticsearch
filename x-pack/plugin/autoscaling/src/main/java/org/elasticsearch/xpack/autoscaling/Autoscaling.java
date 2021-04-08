@@ -177,6 +177,7 @@ public class Autoscaling extends Plugin implements ActionPlugin, ExtensiblePlugi
 
     @Override
     public void loadExtensions(ExtensionLoader loader) {
+        //获取子插件spi类，并实例化后加入 autoscalingExtensions 属性中
         loader.loadExtensions(AutoscalingExtension.class).forEach(autoscalingExtensions::add);
     }
 

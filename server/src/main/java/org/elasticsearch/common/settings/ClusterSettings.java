@@ -132,6 +132,7 @@ public final class ClusterSettings extends AbstractScopedSettings {
         this(nodeSettings, settingsSet, Collections.emptySet());
     }
 
+    //settingsSet = org.elasticsearch.common.settings.SettingsModule.nodeSettings
     public ClusterSettings(final Settings nodeSettings, final Set<Setting<?>> settingsSet, final Set<SettingUpgrader<?>> settingUpgraders) {
         super(nodeSettings, settingsSet, settingUpgraders, Property.NodeScope);
         addSettingsUpdater(new LoggingSettingUpdater(nodeSettings));

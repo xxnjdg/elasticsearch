@@ -62,6 +62,7 @@ public class ScriptModule {
     public ScriptModule(Settings settings, List<ScriptPlugin> scriptPlugins) {
         Map<String, ScriptEngine> engines = new HashMap<>();
         Map<String, ScriptContext<?>> contexts = new HashMap<>(CORE_CONTEXTS);
+        //和插件合并 contexts 35个
         for (ScriptPlugin plugin : scriptPlugins) {
             for (ScriptContext<?> context : plugin.getContexts()) {
                 ScriptContext<?> oldContext = contexts.put(context.name, context);
@@ -70,6 +71,7 @@ public class ScriptModule {
                 }
             }
         }
+        //初始化  ScriptEngine 3个
         for (ScriptPlugin plugin : scriptPlugins) {
             ScriptEngine engine = plugin.getScriptEngine(settings, contexts.values());
             if (engine != null) {

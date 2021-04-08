@@ -60,10 +60,14 @@ final class Spawner implements Closeable {
          * For each module, attempt to spawn the controller daemon. Silently ignore any module that doesn't include a controller for the
          * correct platform.
          */
+        //获取 elasticsearch-7.12.0\modules 所有文件路径
         List<Path> paths = PluginsService.findPluginDirs(environment.modulesFile());
         for (final Path modules : paths) {
             final PluginInfo info = PluginInfo.readFromProperties(modules);
             final Path spawnPath = Platforms.nativeControllerPath(modules);
+            //遍历elasticsearch-7.12.0\modules\下所有子文件夹
+            //看看有没有 \platform\windows-x86_64\bin\controller.exe 文件
+            //如果没有就进入 continue
             if (Files.isRegularFile(spawnPath) == false) {
                 continue;
             }
@@ -74,6 +78,8 @@ final class Spawner implements Closeable {
                     modules.getFileName());
                 throw new IllegalArgumentException(message);
             }
+            // TODO: 2021/3/26 xxnjdg 不知道执行后会发生什么
+            // window 只有一个 elasticsearch-7.12.0\modules\x-pack-ml\platform\windows-x86_64\bin\controller.exe 执行
             final Process process = spawnNativeController(spawnPath, environment.tmpFile(), inheritIo);
             processes.add(process);
         }

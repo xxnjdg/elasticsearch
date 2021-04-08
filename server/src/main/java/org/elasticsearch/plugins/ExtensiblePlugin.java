@@ -31,9 +31,12 @@ public interface ExtensiblePlugin {
 
     /**
      * Allow this plugin to load extensions from other plugins.
+     * 允许此插件加载其他插件的扩展。
      *
      * This method is called once only, after initializing this plugin and all plugins extending this plugin. It is called before
      * any other methods on this Plugin instance are called.
+     *
+     * 在初始化此插件和扩展该插件的所有插件之后，仅调用一次此方法。 在调用此Plugin实例上的任何其他方法之前，将调用它。
      */
     default void loadExtensions(ExtensionLoader loader) {}
 }

@@ -213,6 +213,7 @@ public class ScriptService implements Closeable, ClusterStateApplier {
     }
 
     void registerClusterSettingsListeners(ClusterSettings clusterSettings) {
+        //更新 org.elasticsearch.common.settings.AbstractScopedSettings.settingUpdaters
         clusterSettings.addSettingsUpdateConsumer(SCRIPT_MAX_SIZE_IN_BYTES, this::setMaxSizeInBytes);
 
         // Handle all updatable per-context settings at once for each context.

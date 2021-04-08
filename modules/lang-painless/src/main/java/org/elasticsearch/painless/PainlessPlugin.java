@@ -66,6 +66,8 @@ public final class PainlessPlugin extends Plugin implements ScriptPlugin, Extens
      * Contexts from Core that need custom whitelists can add them to the map below.
      * Whitelist resources should be added as appropriately named, separate files
      * under Painless' resources
+     *
+     * 需要自定义白名单的Core上下文可以将它们添加到下面的map中。白名单资源应作为适当命名的独立文件添加到Painless的资源下
      */
     static {
         Map<ScriptContext<?>, List<Whitelist>> map = new HashMap<>();
@@ -135,9 +137,10 @@ public final class PainlessPlugin extends Plugin implements ScriptPlugin, Extens
 
     @Override
     public void loadExtensions(ExtensionLoader loader) {
-        loader.loadExtensions(PainlessExtension.class).stream()
-            .flatMap(extension -> extension.getContextWhitelists().entrySet().stream())
+        loader.loadExtensions(PainlessExtension.class).stream()//获取了子插件所有spi类，并实例化
+            .flatMap(extension -> extension.getContextWhitelists().entrySet().stream())//获取白名单
             .forEach(entry -> {
+                //把所有的白名单加入到 whitelists 中
                 List<Whitelist> existing = whitelists.computeIfAbsent(entry.getKey(),
                     c -> new ArrayList<>(Whitelist.BASE_WHITELISTS));
                 existing.addAll(entry.getValue());

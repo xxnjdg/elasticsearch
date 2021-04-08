@@ -502,6 +502,7 @@ public class DiscoveryNode implements Writeable, ToXContentFragment {
         return Collections.unmodifiableMap(roles.collect(Collectors.toMap(DiscoveryNodeRole::roleName, Function.identity())));
     }
 
+    //节点角色
     private static Map<String, DiscoveryNodeRole> roleMap = rolesToMap(DiscoveryNodeRole.BUILT_IN_ROLES.stream());
 
     public static DiscoveryNodeRole getRoleFromRoleName(final String roleName) {
@@ -517,6 +518,7 @@ public class DiscoveryNode implements Writeable, ToXContentFragment {
 
     public static void setAdditionalRoles(final Set<DiscoveryNodeRole> additionalRoles) {
         assert additionalRoles.stream().allMatch(r -> r.legacySetting() == null || r.legacySetting().isDeprecated()) : additionalRoles;
+        //插件节点角色 和 普通角色合并
         final Map<String, DiscoveryNodeRole> roleNameToPossibleRoles =
             rolesToMap(Stream.concat(DiscoveryNodeRole.BUILT_IN_ROLES.stream(), additionalRoles.stream()));
         // collect the abbreviation names into a map to ensure that there are not any duplicate abbreviations
@@ -526,6 +528,7 @@ public class DiscoveryNode implements Writeable, ToXContentFragment {
                         .collect(Collectors.toMap(DiscoveryNodeRole::roleNameAbbreviation, Function.identity())));
         assert roleNameToPossibleRoles.size() == roleNameAbbreviationToPossibleRoles.size() :
                 "roles by name [" + roleNameToPossibleRoles + "], roles by name abbreviation [" + roleNameAbbreviationToPossibleRoles + "]";
+        //重新赋值
         roleMap = roleNameToPossibleRoles;
     }
 

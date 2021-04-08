@@ -54,6 +54,7 @@ public abstract class AbstractScopedSettings {
     private final Setting.Property scope;
     private Settings lastSettingsApplied;
 
+    //settingsSet
     protected AbstractScopedSettings(
             final Settings settings,
             final Set<Setting<?>> settingsSet,
@@ -89,6 +90,7 @@ public abstract class AbstractScopedSettings {
                 keySettings.putIfAbsent(setting.getKey(), setting);
             }
         }
+        //根据 settingsSet 初始化
         this.complexMatchers = Collections.unmodifiableMap(complexMatchers);
         this.keySettings = Collections.unmodifiableMap(keySettings);
     }

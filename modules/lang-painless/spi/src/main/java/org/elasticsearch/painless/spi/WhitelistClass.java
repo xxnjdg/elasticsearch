@@ -33,9 +33,11 @@ import java.util.stream.Collectors;
 public final class WhitelistClass {
 
     /** Information about where this class was white-listed from. */
+    //类在文件的行数
     public final String origin;
 
     /** The Java class name this class represents. */
+    //类名
     public final String javaClassName;
 
     /** The {@link List} of whitelisted ({@link WhitelistConstructor}s) available to this class. */

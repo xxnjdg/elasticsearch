@@ -35,9 +35,15 @@ public class SettingsModule implements Module {
     private static final Logger logger = LogManager.getLogger(SettingsModule.class);
 
     private final Settings settings;
+    //settings合集 = ClusterSettings.BUILT_IN_CLUSTER_SETTINGS 和 IndexScopedSettings.BUILT_IN_INDEX_SETTINGS
+    //构造方法闯入的 additionalSettings
+    // 包含 Property.Filtered 属性 settings合集 的 key 和 各种插件 getSettingsFilter 方法获取
     private final Set<String> settingsFilterPattern = new HashSet<>();
+    // 包含 Property.NodeScope 属性 settings合集
     private final Map<String, Setting<?>> nodeSettings = new HashMap<>();
+    // 包含 Property.IndexScope 属性 settings合集
     private final Map<String, Setting<?>> indexSettings = new HashMap<>();
+    // 包含 Property.NodeScope 和 Property.Consistent  属性 settings合集
     private final Set<Setting<?>> consistentSettings = new HashSet<>();
     private final IndexScopedSettings indexScopedSettings;
     private final ClusterSettings clusterSettings;
@@ -47,6 +53,9 @@ public class SettingsModule implements Module {
         this(settings, Arrays.asList(additionalSettings), Collections.emptyList(), Collections.emptySet());
     }
 
+    //settingsFilter = 各种插件 getSettingsFilter 方法获取
+    //settingUpgraders = 各种插件 getSettingUpgraders 方法获取
+    //additionalSettings = 各种插件 getSettings 方法 + org.elasticsearch.threadpool.ThreadPool.builders.getRegisteredSettings() 方法返回
     public SettingsModule(
             Settings settings,
             List<Setting<?>> additionalSettings,
@@ -78,6 +87,7 @@ public class SettingsModule implements Module {
             assert added : settingUpgrader.getSetting().getKey();
         }
         this.indexScopedSettings = new IndexScopedSettings(settings, new HashSet<>(this.indexSettings.values()));
+        //clusterSettingUpgraders = ClusterSettings.BUILT_IN_SETTING_UPGRADERS 和 settingUpgraders 合并
         this.clusterSettings = new ClusterSettings(settings, new HashSet<>(this.nodeSettings.values()), clusterSettingUpgraders);
         Settings indexSettings = settings.filter((s) -> (s.startsWith("index.") &&
             // special case - we want to get Did you mean indices.query.bool.max_clause_count
@@ -136,6 +146,7 @@ public class SettingsModule implements Module {
         }
         // by now we are fully configured, lets check node level settings for unregistered index settings
         clusterSettings.validate(settings, true);
+        //初始化
         this.settingsFilter = new SettingsFilter(settingsFilterPattern);
      }
 
@@ -155,6 +166,7 @@ public class SettingsModule implements Module {
     private void registerSetting(Setting<?> setting) {
         if (setting.isFiltered()) {
             if (settingsFilterPattern.contains(setting.getKey()) == false) {
+                //注册
                 registerSettingsFilter(setting.getKey());
             }
         }

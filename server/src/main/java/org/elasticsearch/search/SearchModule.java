@@ -293,6 +293,7 @@ public class SearchModule {
     public static final Setting<Integer> INDICES_MAX_NESTED_DEPTH_SETTING = Setting.intSetting("indices.query.bool.max_nested_depth",
         20, 1, Integer.MAX_VALUE, Setting.Property.NodeScope);
 
+    //构造方法初始化以下参数
     private final boolean transportClient;
     private final Map<String, Highlighter> highlighters;
     private final ParseFieldRegistry<MovAvgModel.AbstractModelParser> movingAverageModelParserRegistry = new ParseFieldRegistry<>(

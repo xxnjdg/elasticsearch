@@ -123,6 +123,8 @@ public abstract class Plugin implements Closeable {
     /**
      * Additional node settings loaded by the plugin. Note that settings that are explicit in the nodes settings can't be
      * overwritten with the additional settings. These settings added if they don't exist.
+     *
+     * 插件加载的其他节点设置。 请注意，节点设置中显式的设置不能被其他设置覆盖。 如果这些设置不存在，则会添加这些设置。
      */
     public Settings additionalSettings() {
         return Settings.Builder.EMPTY_SETTINGS;
@@ -131,6 +133,8 @@ public abstract class Plugin implements Closeable {
     /**
      * Returns parsers for {@link NamedWriteable} this plugin will use over the transport protocol.
      * @see NamedWriteableRegistry
+     *
+     * 返回此插件将在传输协议上使用的{@link NamedWriteable}的解析器。
      */
     public List<NamedWriteableRegistry.Entry> getNamedWriteables() {
         return Collections.emptyList();
@@ -138,6 +142,8 @@ public abstract class Plugin implements Closeable {
 
     /**
      * Returns parsers for named objects this plugin will parse from {@link XContentParser#namedObject(Class, String, Object)}.
+     *
+     * 返回此插件将从{@link XContentParser＃namedObject（Class，String，Object）}解析的命名对象的解析器。
      * @see NamedWriteableRegistry
      */
     public List<NamedXContentRegistry.Entry> getNamedXContent() {
@@ -147,21 +153,29 @@ public abstract class Plugin implements Closeable {
     /**
      * Called before a new index is created on a node. The given module can be used to register index-level
      * extensions.
+     *
+     * 在节点上创建新索引之前调用。 给定的模块可用于注册索引级扩展。
      */
     public void onIndexModule(IndexModule indexModule) {}
 
     /**
      * Returns a list of additional {@link Setting} definitions for this plugin.
+     *
+     * 返回此插件的其他{@link Setting}定义的列表。
      */
     public List<Setting<?>> getSettings() { return Collections.emptyList(); }
 
     /**
      * Returns a list of additional settings filter for this plugin
+     *
+     * 返回此插件的其他设置过滤器列表
      */
     public List<String> getSettingsFilter() { return Collections.emptyList(); }
 
     /**
      * Get the setting upgraders provided by this plugin.
+     *
+     * 获取此插件提供的设置升级程序。
      *
      * @return the settings upgraders
      */
@@ -171,6 +185,8 @@ public abstract class Plugin implements Closeable {
 
     /**
      * Provides a function to modify index template meta data on startup.
+     *
+     * 提供在启动时修改索引模板元数据的功能。
      * <p>
      * Plugins should return the input template map via {@link UnaryOperator#identity()} if no upgrade is required.
      * <p>
@@ -188,6 +204,8 @@ public abstract class Plugin implements Closeable {
     /**
      * Provides the list of this plugin's custom thread pools, empty if
      * none.
+     *
+     * 提供此插件的自定义线程池的列表，如果没有则为空。
      *
      * @param settings the current settings
      * @return executors builders for this plugin's custom thread pools

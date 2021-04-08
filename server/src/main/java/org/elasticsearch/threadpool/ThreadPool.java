@@ -134,6 +134,7 @@ public class ThreadPool implements ReportingService<ThreadPoolInfo>, Scheduler {
         THREAD_POOL_TYPES = Collections.unmodifiableMap(map);
     }
 
+    //线程池
     private final Map<String, ExecutorHolder> executors;
 
     private final ThreadPoolInfo threadPoolInfo;
@@ -212,6 +213,7 @@ public class ThreadPool implements ReportingService<ThreadPoolInfo>, Scheduler {
         executors.put(Names.SAME, new ExecutorHolder(DIRECT_EXECUTOR, new Info(Names.SAME, ThreadPoolType.DIRECT)));
         this.executors = unmodifiableMap(executors);
 
+        //排除了上面刚加入的 Names.SAME 线程池
         final List<Info> infos =
                 executors
                         .values()
@@ -220,8 +222,10 @@ public class ThreadPool implements ReportingService<ThreadPoolInfo>, Scheduler {
                         .map(holder -> holder.info)
                         .collect(Collectors.toList());
         this.threadPoolInfo = new ThreadPoolInfo(infos);
+        //初始化调度线程池
         this.scheduler = Scheduler.initScheduler(settings);
         TimeValue estimatedTimeInterval = ESTIMATED_TIME_INTERVAL_SETTING.get(settings);
+        //开启线程
         this.cachedTimeThread = new CachedTimeThread(EsExecutors.threadName(settings, "[timer]"), estimatedTimeInterval.millis());
         this.cachedTimeThread.start();
     }

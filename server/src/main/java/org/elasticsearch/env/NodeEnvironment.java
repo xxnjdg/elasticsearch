@@ -198,12 +198,15 @@ public final class NodeEnvironment  implements Closeable {
                 final Path[] dataPaths = environment.dataFiles();
                 for (int dirIndex = 0; dirIndex < dataPaths.length; dirIndex++) {
                     Path dataDir = dataPaths[dirIndex];
+                    //node 文件
                     Path dir = resolveNodePath(dataDir, nodeId);
+                    //创建文件
                     if (pathFunction.apply(dir) == false) {
                         continue;
                     }
                     try (Directory luceneDir = FSDirectory.open(dir, NativeFSLockFactory.INSTANCE)) {
                         logger.trace("obtaining node lock on {} ...", dir.toAbsolutePath());
+                        //node.lock 文件
                         locks[dirIndex] = luceneDir.obtainLock(NODE_LOCK_FILENAME);
                         nodePaths[dirIndex] = new NodePath(dir);
                     } catch (IOException e) {

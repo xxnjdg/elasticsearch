@@ -94,6 +94,7 @@ final class Security {
     /**
      * Initializes SecurityManager for the environment
      * Can only happen once!
+     * 为环境初始化 SecurityManager 只发生一次
      * @param environment configuration for generating dynamic permissions
      * @param filterBadDefaults true if we should filter out bad java defaults in the system policy.
      */

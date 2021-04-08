@@ -89,6 +89,7 @@ public final class NetworkModule {
             new NamedWriteableRegistry.Entry(Task.Status.class, ResyncTask.Status.NAME, ResyncTask.Status::new));
     }
 
+    //调用插件初始化以下值
     private final Map<String, Supplier<Transport>> transportFactories = new HashMap<>();
     private final Map<String, Supplier<HttpServerTransport>> transportHttpFactories = new HashMap<>();
     private final List<TransportInterceptor> transportInterceptors = new ArrayList<>();

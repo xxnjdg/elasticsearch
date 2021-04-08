@@ -125,6 +125,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         Set<Bundle> seenBundles = new LinkedHashSet<>();
         List<PluginInfo> modulesList = new ArrayList<>();
         // load modules
+        //加载模块
         if (modulesDirectory != null) {
             try {
                 Set<Bundle> modules = getModuleBundles(modulesDirectory);
@@ -202,6 +203,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         final Map<String, String> features = new TreeMap<>();
         final Settings.Builder builder = Settings.builder();
         for (Tuple<PluginInfo, Plugin> plugin : plugins) {
+            //additionalSettings 这是插件通过代码自定义加入的settings
             Settings settings = plugin.v2().additionalSettings();
             for (String setting : settings.keySet()) {
                 String oldPlugin = foundSettings.put(setting, plugin.v1().getName());
@@ -229,6 +231,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         for (final String feature : features.keySet()) {
             builder.put(TransportSettings.FEATURE_PREFIX + "." + feature, true);
         }
+        //和 this.settings 合并
         return builder.put(this.settings).build();
     }
 
@@ -273,8 +276,8 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
 
     // a "bundle" is a group of jars in a single classloader
     static class Bundle {
-        final PluginInfo plugin;
-        final Set<URL> urls;
+        final PluginInfo plugin;//读取 plugin-descriptor.properties 文件的基本信息
+        final Set<URL> urls;//模块下的所有 jar 包
 
         Bundle(PluginInfo plugin, Path dir) throws IOException {
             this.plugin = Objects.requireNonNull(plugin);
@@ -469,13 +472,16 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         List<Bundle> sortedBundles = sortBundles(bundles);
         for (Bundle bundle : sortedBundles) {
             if (bundle.plugin.getType() != PluginType.BOOTSTRAP) {
+                //检测 jar 包冲突
                 checkBundleJarHell(JarHell.parseClassPath(), bundle, transitiveUrls);
 
+                //加载插件类，并实例化
                 final Plugin plugin = loadBundle(bundle, loaded);
                 plugins.add(new Tuple<>(bundle.plugin, plugin));
             }
         }
 
+        //加载扩展
         loadExtensions(plugins);
         return Collections.unmodifiableList(plugins);
     }
@@ -498,6 +504,9 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
             @Override
             public <T> List<T> loadExtensions(Class<T> extensionPointType) {
                 List<T> result = new ArrayList<>();
+                //extensiblePlugin 是继承了 ExtensiblePlugin 类，
+                // extendingPlugins 这些插件在模块下 plugin-descriptor.properties 文件里 extended.plugins= 属性都指向了 extensiblePlugin
+                //extendingPlugins 有spi，但是他会委托 extensiblePlugin 帮他加载
                 for (Plugin extendingPlugin : extendingPlugins) {
                     result.addAll(createExtensions(extensionPointType, extendingPlugin));
                 }
@@ -513,6 +522,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         List<T> extensions = new ArrayList<>();
         while (classIterator.hasNext()) {
             Class<? extends T> extensionClass = classIterator.next();
+            //实例化 extensionClass 并加入到队列
             extensions.add(createExtension(extensionClass, extensionPointType, plugin));
         }
         return extensions;
@@ -633,6 +643,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         ClassLoader loader = URLClassLoader.newInstance(bundle.urls.toArray(new URL[0]), parentLoader);
 
         // reload SPI with any new services from the plugin
+        // TODO: 2021/3/26 xxnjdg 不知道干什么
         reloadLuceneSPI(loader);
 
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -645,12 +656,14 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
                 return null;
             });
 
+            //类加载
             Class<? extends Plugin> pluginClass = loadPluginClass(bundle.plugin.getClassname(), loader);
             if (loader != pluginClass.getClassLoader()) {
                 throw new IllegalStateException("Plugin [" + name + "] must reference a class loader local Plugin class ["
                     + bundle.plugin.getClassname()
                     + "] (class loader [" + pluginClass.getClassLoader() + "])");
             }
+            //实例化
             Plugin plugin = loadPlugin(pluginClass, settings, configPath);
             loaded.put(name, plugin);
             return plugin;

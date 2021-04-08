@@ -600,6 +600,7 @@ public class ActionModule extends AbstractModule {
         actions.register(DeletePipelineAction.INSTANCE, DeletePipelineTransportAction.class);
         actions.register(SimulatePipelineAction.INSTANCE, SimulatePipelineTransportAction.class);
 
+        //调用插件 getActions 方法获取返回值列表，这些列表 调用 actions::register 加入到内部缓存
         actionPlugins.stream().flatMap(p -> p.getActions().stream()).forEach(actions::register);
 
         // Persistent tasks:
