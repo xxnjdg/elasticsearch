@@ -38,6 +38,7 @@ import static org.elasticsearch.rest.RestRequest.Method.PUT;
 public class RestIndexAction extends BaseRestHandler {
     public RestIndexAction(Settings settings, RestController controller) {
         super(settings);
+        //1 写入文档，自动生成id, 注册 post 请求 /{index}/{type} 对应的处理函数 this
         controller.registerHandler(POST, "/{index}/{type}", this); // auto id creation
         controller.registerHandler(PUT, "/{index}/{type}/{id}", this);
         controller.registerHandler(POST, "/{index}/{type}/{id}", this);
@@ -68,15 +69,22 @@ public class RestIndexAction extends BaseRestHandler {
         }
     }
 
+    //2 对应处理器方法执行
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
+        //解析各种请求参数,请求体
         IndexRequest indexRequest = new IndexRequest(request.param("index"), request.param("type"), request.param("id"));
+        //默认id路由
         indexRequest.routing(request.param("routing"));
         indexRequest.parent(request.param("parent"));
         indexRequest.setPipeline(request.param("pipeline"));
+        //请求体，即文档内容
         indexRequest.source(request.requiredContent(), request.getXContentType());
+        //默认1分钟超时
         indexRequest.timeout(request.paramAsTime("timeout", IndexRequest.DEFAULT_TIMEOUT));
+        //默认不刷新
         indexRequest.setRefreshPolicy(request.param("refresh"));
+        //设置版本号，用于乐观锁
         indexRequest.version(RestActions.parseVersion(request));
         indexRequest.versionType(VersionType.fromString(request.param("version_type"), indexRequest.versionType()));
         String sOpType = request.param("op_type");
@@ -88,6 +96,7 @@ public class RestIndexAction extends BaseRestHandler {
             indexRequest.opType(sOpType);
         }
 
+        //3 执行这个方法
         return channel ->
                 client.index(indexRequest, new RestStatusToXContentListener<>(channel, r -> r.getLocation(indexRequest.routing())));
     }

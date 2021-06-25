@@ -36,9 +36,13 @@ import java.util.Objects;
  */
 public final class CompositeBytesReference extends BytesReference {
 
+    //header -> body -> zeroCopyBuffer
     private final BytesReference[] references;
+    //
     private final int[] offsets;
+    //数据真实长度
     private final int length;
+    //数据实际在内存占用长度，例如分配了16kB数组，你只用了50字节，这个变量就是16KB
     private final long ramBytesUsed;
 
     public CompositeBytesReference(BytesReference... references) {

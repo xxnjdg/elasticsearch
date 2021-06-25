@@ -77,25 +77,30 @@ public class RecoveryTarget extends AbstractRefCounted implements RecoveryTarget
     private static final String RECOVERY_PREFIX = "recovery.";
 
     private final ShardId shardId;
+    //自增唯一值
     private final long recoveryId;
     private final IndexShard indexShard;
     private final DiscoveryNode sourceNode;
     private final String tempFilePrefix;
     private final Store store;
     private final PeerRecoveryTargetService.RecoveryListener listener;
+    //this::waitForClusterState
     private final LongConsumer ensureClusterStateVersionCallback;
 
     private final AtomicBoolean finished = new AtomicBoolean();
 
+    //key = 原始名字 value = 文件输入流 文件写入结束后移除
     private final ConcurrentMap<String, IndexOutput> openIndexOutputs = ConcurrentCollections.newConcurrentMap();
     private final CancellableThreads cancellableThreads;
 
     // last time this status was accessed
+    //
     private volatile long lastAccessTime = System.nanoTime();
 
     // latch that can be used to blockingly wait for RecoveryTarget to be closed
     private final CountDownLatch closedLatch = new CountDownLatch(1);
 
+    //key = 临时文件名 value = 原始名字 临时文件名重命名原始名字后从map删除
     private final Map<String, String> tempFileNames = ConcurrentCollections.newConcurrentMap();
 
     /**
@@ -312,6 +317,7 @@ public class RecoveryTarget extends AbstractRefCounted implements RecoveryTarget
         }
         // add first, before it's created
         tempFileNames.put(tempFileName, fileName);
+        //创建输入流
         IndexOutput indexOutput = store.createVerifyingOutput(tempFileName, metaData, IOContext.DEFAULT);
         openIndexOutputs.put(fileName, indexOutput);
         return indexOutput;
@@ -469,26 +475,33 @@ public class RecoveryTarget extends AbstractRefCounted implements RecoveryTarget
         final RecoveryState.Index indexState = state().getIndex();
         IndexOutput indexOutput;
         if (position == 0) {
+            //打开文件
             indexOutput = openAndPutIndexOutput(name, fileMetaData, store);
         } else {
             indexOutput = getOpenIndexOutput(name);
         }
         BytesRefIterator iterator = content.iterator();
         BytesRef scratch;
+        //写入
         while((scratch = iterator.next()) != null) { // we iterate over all pages - this is a 0-copy for all core impls
             indexOutput.writeBytes(scratch.bytes, scratch.offset, scratch.length);
         }
+        //更新恢复的字节
         indexState.addRecoveredBytesToFile(name, content.length());
+        //如果是最后一块，或者写到文件尾
         if (indexOutput.getFilePointer() >= fileMetaData.length() || lastChunk) {
             try {
+                //检验
                 Store.verify(indexOutput);
             } finally {
                 // we are done
+                //关闭
                 indexOutput.close();
             }
             final String temporaryFileName = getTempNameForFile(name);
             assert Arrays.asList(store.directory().listAll()).contains(temporaryFileName) :
                 "expected: [" + temporaryFileName + "] in " + Arrays.toString(store.directory().listAll());
+            //同步
             store.directory().sync(Collections.singleton(temporaryFileName));
             IndexOutput remove = removeOpenIndexOutputs(name);
             assert remove == null || remove == indexOutput; // remove maybe null if we got finished

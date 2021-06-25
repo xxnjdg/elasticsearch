@@ -106,6 +106,7 @@ public class BigArrays implements Releasable {
             return size;
         }
 
+        //发送数据后被调用
         @Override
         protected final void doClose() {
             Releasables.close(releasable);
@@ -374,6 +375,7 @@ public class BigArrays implements Releasable {
 
     public BigArrays(Settings settings, @Nullable final CircuitBreakerService breakerService) {
         // Checking the breaker is disabled if not specified
+        //初始化  PageCacheRecycler
         this(new PageCacheRecycler(settings), breakerService, false);
     }
 
@@ -467,24 +469,31 @@ public class BigArrays implements Releasable {
      * Allocate a new {@link ByteArray}.
      * @param size          the initial length of the array
      * @param clearOnResize whether values should be set to 0 on initialization and resize
+     *                      初始化 和 resize 数组是否被设置为 0 标志位，true 表示要设置
      */
     public ByteArray newByteArray(long size, boolean clearOnResize) {
+        //大于一页
         if (size > BYTE_PAGE_SIZE) {
             // when allocating big arrays, we want to first ensure we have the capacity by
             // checking with the circuit breaker before attempting to allocate
             adjustBreaker(BigByteArray.estimateRamBytes(size), false);
             return new BigByteArray(size, this, clearOnResize);
         } else if (size >= BYTE_PAGE_SIZE / 2 && recycler != null) {
+            // 1页 > size > 0.5 页
+            //分配一页16kb数组
             final Recycler.V<byte[]> page = recycler.bytePage(clearOnResize);
             return validate(new ByteArrayWrapper(this, page.v(), size, page, clearOnResize));
         } else {
+            // size < 0.5 页
             return validate(new ByteArrayWrapper(this, new byte[(int) size], size, null, clearOnResize));
         }
     }
 
     /**
      * Allocate a new {@link ByteArray} initialized with zeros.
+     * 分配一个新的初始化为0的 ByteArray
      * @param size          the initial length of the array
+     *                      数组长度
      */
     public ByteArray newByteArray(long size) {
         return newByteArray(size, true);

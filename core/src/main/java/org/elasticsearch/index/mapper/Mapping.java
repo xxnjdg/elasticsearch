@@ -43,8 +43,11 @@ public final class Mapping implements ToXContentFragment {
 
     final Version indexCreated;
     final RootObjectMapper root;
+    //排好序
     final MetadataFieldMapper[] metadataMappers;
+    //未排序
     final Map<Class<? extends MetadataFieldMapper>, MetadataFieldMapper> metadataMappersMap;
+    //null
     final Map<String, Object> meta;
 
     public Mapping(Version indexCreated, RootObjectMapper rootObjectMapper, MetadataFieldMapper[] metadataMappers, Map<String, Object> meta) {
@@ -133,6 +136,7 @@ public final class Mapping implements ToXContentFragment {
                     builder.field("_meta", meta);
                 }
                 for (Mapper mapper : metadataMappers) {
+                    //遍历 metadataMappers
                     mapper.toXContent(builder, params);
                 }
                 return builder;

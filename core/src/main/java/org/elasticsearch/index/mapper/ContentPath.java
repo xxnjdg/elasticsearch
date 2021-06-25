@@ -25,10 +25,13 @@ public final class ContentPath {
 
     private final StringBuilder sb;
 
+    //1 从 offset 位置开始的path数组数据才有效
     private final int offset;
 
+    //0 写入字符串位置指针
     private int index = 0;
 
+    //type名 数据数组
     private String[] path = new String[10];
 
     public ContentPath() {

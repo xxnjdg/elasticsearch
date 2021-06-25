@@ -114,12 +114,16 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
     private BigArrays bigArrays;
     protected final ReleasableLock readLock;
     protected final ReleasableLock writeLock;
+    //${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}/translog
     private final Path location;
+    //translog-1.tlog
     private TranslogWriter current;
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final TranslogConfig config;
+    //() -> seqNoService.getGlobalCheckpoint()
     private final LongSupplier globalCheckpointSupplier;
+    //随机生成
     private final String translogUUID;
     private final TranslogDeletionPolicy deletionPolicy;
 
@@ -136,6 +140,7 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
      *                                 deleted
      * @param globalCheckpointSupplier a supplier for the global checkpoint
      */
+    //globalCheckpointSupplier = () -> seqNoService.getGlobalCheckpoint() expectedTranslogUUID = null
     public Translog(
         final TranslogConfig config, final String expectedTranslogUUID, TranslogDeletionPolicy deletionPolicy,
         final LongSupplier globalCheckpointSupplier) throws IOException {
@@ -153,6 +158,7 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
         readLock = new ReleasableLock(rwl.readLock());
         writeLock = new ReleasableLock(rwl.writeLock());
         this.location = config.getTranslogPath();
+        //创建文件夹
         Files.createDirectories(this.location);
 
         try {
@@ -191,13 +197,16 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
                     }
                 }
             } else {
+                //删除
                 IOUtils.rm(location);
                 // start from whatever generation lucene points to
                 final long generation = deletionPolicy.getMinTranslogGenerationForRecovery();
                 logger.debug("wipe translog location - creating new translog, starting generation [{}]", generation);
+                //创建
                 Files.createDirectories(location);
                 final Checkpoint checkpoint = Checkpoint.emptyTranslogCheckpoint(0, generation, globalCheckpointSupplier.getAsLong(), generation);
                 final Path checkpointFile = location.resolve(CHECKPOINT_FILE_NAME);
+                //Checkpoint数据写入文件
                 Checkpoint.write(getChannelFactory(), checkpointFile, checkpoint, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
                 IOUtils.fsync(checkpointFile, false);
                 current = createWriter(generation, generation);
@@ -461,6 +470,7 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
      *                              needed to solve and initialization problem while constructing an empty translog.
      *                              With no readers and no current, a call to  {@link #getMinFileGeneration()} would not work.
      */
+    //1 1
     private TranslogWriter createWriter(long fileGeneration, long initialMinTranslogGen) throws IOException {
         final TranslogWriter newFile;
         try {
@@ -1512,6 +1522,7 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
              * be the current translog generation as we do not need any prior generations to have a complete history up to the current local
              * checkpoint.
              */
+            //1
             long minTranslogFileGeneration = this.currentFileGeneration();
             for (final TranslogReader reader : readers) {
                 if (seqNo <= reader.getCheckpoint().maxSeqNo) {

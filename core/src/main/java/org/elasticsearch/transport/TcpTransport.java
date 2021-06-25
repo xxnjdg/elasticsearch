@@ -197,10 +197,13 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     protected volatile TransportService transportService;
     // node id to actual channel
+    //存放连接的列表
     protected final ConcurrentMap<DiscoveryNode, NodeChannels> connectedNodes = newConcurrentMap();
 
     protected final ConcurrentMap<String, BoundTransportAddress> profileBoundAddresses = newConcurrentMap();
+    //key = ProfileSettings名字 value =  NettyTcpChannel 列表
     private final Map<String, List<TcpChannel>> serverChannels = newConcurrentMap();
+    //NettyTcpChannel 列表
     private final Set<TcpChannel> acceptedChannels = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     protected final KeyedLock<String> connectionLock = new KeyedLock<>();
@@ -209,11 +212,15 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     // this lock is here to make sure we close this transport and disconnect all the client nodes
     // connections while no connect operations is going on... (this might help with 100% CPU when stopping the transport?)
     protected final ReadWriteLock closeLock = new ReentrantReadWriteLock();
+    //默认false
     protected final boolean compress;
+    //BoundTransportAddress，默认 9300
     protected volatile BoundTransportAddress boundAddress;
     private final String transportName;
     protected final ConnectionProfile defaultConnectionProfile;
 
+    //握手处理缓存，成功握手后会移除
+    //key = 自增唯一 requestId value = HandshakeResponseHandler
     private final ConcurrentMap<Long, HandshakeResponseHandler> pendingHandshakes = new ConcurrentHashMap<>();
     private final AtomicLong requestIdGenerator = new AtomicLong();
     private final CounterMetric numHandshakes = new CounterMetric();
@@ -279,6 +286,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         this.transportService = service;
     }
 
+    //对方收到握手，给我们响应回来，接受响应处理的逻辑
     private static class HandshakeResponseHandler implements TransportResponseHandler<VersionHandshakeResponse> {
         final AtomicReference<Version> versionRef = new AtomicReference<>();
         final CountDownLatch latch = new CountDownLatch(1);
@@ -401,6 +409,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         private final List<TcpChannel> channels;
         private final DiscoveryNode node;
         private final AtomicBoolean closed = new AtomicBoolean(false);
+        //响应节点当前es的版本
         private final Version version;
 
         NodeChannels(DiscoveryNode node, List<TcpChannel> channels, ConnectionProfile connectionProfile, Version handshakeVersion) {
@@ -425,6 +434,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             return channels;
         }
 
+        //重 channels 列表选择一个 TcpChannel
         public TcpChannel channel(TransportRequestOptions.Type type) {
             ConnectionProfile.ConnectionTypeHandle connectionTypeHandle = typeMapping.get(type);
             if (connectionTypeHandle == null) {
@@ -472,6 +482,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             return this.node;
         }
 
+        //发送 Request
         @Override
         public void sendRequest(long requestId, String action, TransportRequest request, TransportRequestOptions options)
             throws IOException, TransportException {
@@ -581,6 +592,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         return resolveConnectionProfile(connectionProfile, defaultConnectionProfile);
     }
 
+    //封装 NodeChannels 后返回
     @Override
     public final NodeChannels openConnection(DiscoveryNode node, ConnectionProfile connectionProfile) throws IOException {
         if (node == null) {
@@ -589,10 +601,12 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         boolean success = false;
         NodeChannels nodeChannels = null;
         connectionProfile = resolveConnectionProfile(connectionProfile);
+        //上锁
         closeLock.readLock().lock(); // ensure we don't open connections while we are closing
         try {
             ensureOpen();
             try {
+                //打开连接数
                 int numConnections = connectionProfile.getNumConnections();
                 assert numConnections > 0 : "A connection profile must be configured with at least one connection";
                 List<TcpChannel> channels = new ArrayList<>(numConnections);
@@ -601,6 +615,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                     try {
                         PlainActionFuture<Void> connectFuture = PlainActionFuture.newFuture();
                         connectionFutures.add(connectFuture);
+                        //成功返回 NettyTcpChannel
                         TcpChannel channel = initiateChannel(node, connectionProfile.getConnectTimeout(), connectFuture);
                         channels.add(channel);
                     } catch (Exception e) {
@@ -612,6 +627,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
                 // If we make it past the block above, we successfully instantiated all of the channels
                 try {
+                    ////等待连接，超时时间3s
                     TcpChannel.awaitConnected(node, connectionFutures, connectionProfile.getConnectTimeout());
                 } catch (Exception ex) {
                     TcpChannel.closeChannels(channels, false);
@@ -623,6 +639,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                 handshakeChannel.addCloseListener(ActionListener.wrap(() -> cancelHandshakeForChannel(handshakeChannel)));
                 Version version;
                 try {
+                    //执行握手，返回 响应节点当前es的版本，例如响应节点是6.1.2，这里就返回 6.1.2
                     version = executeHandshake(node, handshakeChannel, connectionProfile.getHandshakeTimeout());
                 } catch (Exception ex) {
                     TcpChannel.closeChannels(channels, false);
@@ -632,6 +649,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                 // If we make it past the block above, we have successfully completed the handshake and the connection is now open.
                 // At this point we should construct the connection, notify the transport service, and attach close listeners to the
                 // underlying channels.
+                //构建 NodeChannels
                 nodeChannels = new NodeChannels(node, channels, connectionProfile, version);
                 transportService.onConnectionOpened(nodeChannels);
                 final NodeChannels finalNodeChannels = nodeChannels;
@@ -664,6 +682,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                 }
             }
         } finally {
+            //解锁
             closeLock.readLock().unlock();
         }
     }
@@ -739,6 +758,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         InetAddress hostAddresses[];
         List<String> profileBindHosts = profileSettings.bindHosts;
         try {
+            //获取绑定的主机地址，默认是本地地址
             hostAddresses = networkService.resolveBindHostAddresses(profileBindHosts.toArray(Strings.EMPTY_ARRAY));
         } catch (IOException e) {
             throw new BindTransportException("Failed to resolve host " + profileBindHosts, e);
@@ -754,6 +774,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         assert hostAddresses.length > 0;
 
         List<InetSocketAddress> boundAddresses = new ArrayList<>();
+        //绑定地址
         for (InetAddress hostAddress : hostAddresses) {
             boundAddresses.add(bindToPort(profileSettings.profileName, hostAddress, profileSettings.portOrRange));
         }
@@ -767,14 +788,18 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         }
     }
 
+    //hostAddress = 绑定的主机地址 port = 绑定的端口默认，9300-9400
     protected InetSocketAddress bindToPort(final String name, final InetAddress hostAddress, String port) {
         PortsRange portsRange = new PortsRange(port);
         final AtomicReference<Exception> lastException = new AtomicReference<>();
         final AtomicReference<InetSocketAddress> boundSocket = new AtomicReference<>();
+        //默认从9300 开始到 9400 结束，开始尝试绑定成功了就不会往下尝试了，失败了下一个
         boolean success = portsRange.iterate(portNumber -> {
             try {
+                //成功会获取 TcpChannel
                 TcpChannel channel = bind(name, new InetSocketAddress(hostAddress, portNumber));
                 synchronized (serverChannels) {
+                    //TcpChannel 加入 serverChannels
                     List<TcpChannel> list = serverChannels.get(name);
                     if (list == null) {
                         list = new ArrayList<>();
@@ -1040,6 +1065,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     protected void serverAcceptedChannel(TcpChannel channel) {
         boolean addedOnThisCall = acceptedChannels.add(channel);
         assert addedOnThisCall : "Channel should only be added to accept channel set once";
+        //注册关闭事件
         channel.addCloseListener(ActionListener.wrap(() -> acceptedChannels.remove(channel)));
     }
 
@@ -1074,10 +1100,12 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         return compress && (!(request instanceof BytesTransportRequest));
     }
 
+    //发送请求到节点
     private void sendRequestToChannel(final DiscoveryNode node, final TcpChannel channel, final long requestId, final String action,
                                       final TransportRequest request, TransportRequestOptions options, Version channelVersion,
                                       byte status) throws IOException,
         TransportException {
+        //是否压缩，默认不开启
         if (compress) {
             options = TransportRequestOptions.builder(options).withCompress(true).build();
         }
@@ -1086,7 +1114,9 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         // the header part is compressed, and the "body" can't be extracted as compressed
         final boolean compressMessage = options.compress() && canCompress(request);
 
+        //去掉 STATUS_REQRES,表示是一个请求
         status = TransportStatus.setRequest(status);
+        //构造字节数组，用于写入将要发送的数据
         ReleasableBytesStreamOutput bStream = new ReleasableBytesStreamOutput(bigArrays);
         final CompressibleBytesOutputStream stream = new CompressibleBytesOutputStream(bStream, compressMessage);
         boolean addedReleaseListener = false;
@@ -1101,13 +1131,17 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             Version version = Version.min(getCurrentVersion(), channelVersion);
 
             stream.setVersion(version);
+            //把当前请求头和响应头写入 stream
             threadPool.getThreadContext().writeTo(stream);
+            //写入 action
             stream.writeString(action);
+            //构造消息
             BytesReference message = buildMessage(requestId, status, node.getVersion(), request, stream);
             final TransportRequestOptions finalOptions = options;
             // this might be called in a different thread
             SendListener onRequestSent = new SendListener(channel, stream,
                 () -> transportService.onRequestSent(node, requestId, action, request, finalOptions), message.length());
+            //发送给节点
             internalSendMessage(channel, message, onRequestSent);
             addedReleaseListener = true;
         } finally {
@@ -1171,10 +1205,13 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     private void sendResponse(Version nodeVersion, TcpChannel channel, final TransportResponse response, final long requestId,
                               final String action, TransportResponseOptions options, byte status) throws IOException {
+        //是否压缩
         if (compress) {
             options = TransportResponseOptions.builder(options).withCompress(true).build();
         }
+        //设置 Response 标志位
         status = TransportStatus.setResponse(status); // TODO share some code with sendRequest
+        //构建字节数组，用于数据的写入
         ReleasableBytesStreamOutput bStream = new ReleasableBytesStreamOutput(bigArrays);
         CompressibleBytesOutputStream stream = new CompressibleBytesOutputStream(bStream, options.compress());
         boolean addedReleaseListener = false;
@@ -1182,14 +1219,17 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             if (options.compress()) {
                 status = TransportStatus.setCompress(status);
             }
+            //把 ThreadContext 请求头和响应头写入 stream
             threadPool.getThreadContext().writeTo(stream);
             stream.setVersion(nodeVersion);
+            //构建 message
             BytesReference message = buildMessage(requestId, status, nodeVersion, response, stream);
 
             final TransportResponseOptions finalOptions = options;
             // this might be called in a different thread
             SendListener listener = new SendListener(channel, stream,
                 () -> transportService.onResponseSent(requestId, action, response, finalOptions), message.length());
+            //发送
             internalSendMessage(channel, message, listener);
             addedReleaseListener = true;
         } finally {
@@ -1231,6 +1271,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             bRequest.writeThin(stream);
             zeroCopyBuffer = bRequest.bytes;
         } else {
+            //写入请求内容
             message.writeTo(stream);
             zeroCopyBuffer = BytesArray.EMPTY;
         }
@@ -1343,16 +1384,23 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
      */
     public final void messageReceived(BytesReference reference, TcpChannel channel, String profileName,
                                       InetSocketAddress remoteAddress, int messageLengthBytes) throws IOException {
+        //总共数据长度
         final int totalMessageSize = messageLengthBytes + TcpHeader.MARKER_BYTES_SIZE + TcpHeader.MESSAGE_LENGTH_SIZE;
+        //统计
         readBytesMetric.inc(totalMessageSize);
         // we have additional bytes to read, outside of the header
+        //除去头剩下的数据长度
         boolean hasMessageBytesToRead = (totalMessageSize - TcpHeader.HEADER_SIZE) > 0;
         StreamInput streamIn = reference.streamInput();
         boolean success = false;
+        //保存以前 threadLocal 状态，重新赋值一个null
+        //自动执行关闭，关闭逻辑是把以前的 threadLocal 状态还原回来
         try (ThreadContext.StoredContext tCtx = threadPool.getThreadContext().stashContext()) {
+            //读取 requestId status version
             long requestId = streamIn.readLong();
             byte status = streamIn.readByte();
             Version version = Version.fromId(streamIn.readInt());
+            //判断是否是压缩
             if (TransportStatus.isCompress(status) && hasMessageBytesToRead && streamIn.available() > 0) {
                 Compressor compressor;
                 try {
@@ -1371,16 +1419,23 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                 }
                 streamIn = compressor.streamInput(streamIn);
             }
+            //判断是握手
             final boolean isHandshake = TransportStatus.isHandshake(status);
+            //判断版本是否有效
             ensureVersionCompatibility(version, getCurrentVersion(), isHandshake);
             streamIn = new NamedWriteableAwareStreamInput(streamIn, namedWriteableRegistry);
             streamIn.setVersion(version);
+            //从数据里读出请求头和响应头到 threadLocal
             threadPool.getThreadContext().readHeaders(streamIn);
             if (TransportStatus.isRequest(status)) {
+                //Request请求
                 handleRequest(channel, profileName, streamIn, requestId, messageLengthBytes, version, remoteAddress, status);
             } else {
+                //Response请求
                 final TransportResponseHandler<?> handler;
                 if (isHandshake) {
+                    //握手请求
+                    //移除 pendingHandshakes
                     handler = pendingHandshakes.remove(requestId);
                 } else {
                     TransportResponseHandler theHandler = transportService.onResponseReceived(requestId);
@@ -1395,6 +1450,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                     if (TransportStatus.isError(status)) {
                         handlerResponseError(streamIn, handler);
                     } else {
+                        //正常执行
                         handleResponse(remoteAddress, streamIn, handler);
                     }
                     // Check the entire message has been read
@@ -1409,6 +1465,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             success = true;
         } finally {
             if (success) {
+                //成功后关闭 streamIn
                 IOUtils.close(streamIn);
             } else {
                 IOUtils.closeWhileHandlingException(streamIn);
@@ -1429,10 +1486,13 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         }
     }
 
+    //处理 Response 请求
     private void handleResponse(InetSocketAddress remoteAddress, final StreamInput stream, final TransportResponseHandler handler) {
         final TransportResponse response = handler.newInstance();
+        //记录远程地址
         response.remoteAddress(new TransportAddress(remoteAddress));
         try {
+            //从数据读取到 TransportResponse
             response.readFrom(stream);
         } catch (Exception e) {
             handleException(handler, new TransportSerializationException(
@@ -1480,18 +1540,23 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         });
     }
 
+    //处理 Request 请求
     protected String handleRequest(TcpChannel channel, String profileName, final StreamInput stream, long requestId,
                                    int messageLengthBytes, Version version, InetSocketAddress remoteAddress, byte status)
         throws IOException {
+        //读取 action
         final String action = stream.readString();
         transportService.onRequestReceived(requestId, action);
         TransportChannel transportChannel = null;
         try {
+            //判断是否握手
             if (TransportStatus.isHandshake(status)) {
                 final VersionHandshakeResponse response = new VersionHandshakeResponse(getCurrentVersion());
+                //发送 Response 请求
                 sendResponse(version, channel, response, requestId, HANDSHAKE_ACTION_NAME, TransportResponseOptions.EMPTY,
                     TransportStatus.setHandshake((byte) 0));
             } else {
+                //获取 RequestHandlerRegistry
                 final RequestHandlerRegistry reg = transportService.getRequestHandler(action);
                 if (reg == null) {
                     throw new ActionNotFoundTransportException(action);
@@ -1503,6 +1568,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                 }
                 transportChannel = new TcpTransportChannel(this, channel, transportName, action, requestId, version, profileName,
                     messageLengthBytes);
+                //读法发送过来的 TransportRequest
                 final TransportRequest request = reg.newRequest();
                 request.remoteAddress(new TransportAddress(remoteAddress));
                 request.readFrom(stream);
@@ -1599,13 +1665,16 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         }
     }
 
+    //执行握手
     protected Version executeHandshake(DiscoveryNode node, TcpChannel channel, TimeValue timeout)
         throws IOException, InterruptedException {
+        //统计
         numHandshakes.inc();
         final long requestId = newRequestId();
         final HandshakeResponseHandler handler = new HandshakeResponseHandler(channel);
         AtomicReference<Version> versionRef = handler.versionRef;
         AtomicReference<Exception> exceptionRef = handler.exceptionRef;
+        //加入
         pendingHandshakes.put(requestId, handler);
         boolean success = false;
         try {
@@ -1619,9 +1688,12 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             // for the request we use the minCompatVersion since we don't know what's the version of the node we talk to
             // we also have no payload on the request but the response will contain the actual version of the node we talk
             // to as the payload.
+            //获取版本
             final Version minCompatVersion = getCurrentVersion().minimumCompatibilityVersion();
+            //发送请求
             sendRequestToChannel(node, channel, requestId, HANDSHAKE_ACTION_NAME, TransportRequest.Empty.INSTANCE,
                 TransportRequestOptions.EMPTY, minCompatVersion, TransportStatus.setHandshake((byte) 0));
+            //等待3s
             if (handler.latch.await(timeout.millis(), TimeUnit.MILLISECONDS) == false) {
                 throw new ConnectTransportException(node, "handshake_timeout[" + timeout + "]");
             }
@@ -1634,9 +1706,11 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                     throw new IllegalStateException("Received message from unsupported version: [" + version
                         + "] minimal compatible version is: [" + getCurrentVersion().minimumCompatibilityVersion() + "]");
                 }
+                //返回 响应节点当前es的版本，例如响应节点是6.1.2，这里就返回 6.1.2
                 return version;
             }
         } finally {
+            //成功后会移除 pendingHandshakes 中的元素
             final TransportResponseHandler<?> removedHandler = pendingHandshakes.remove(requestId);
             // in the case of a timeout or an exception on the send part the handshake has not been removed yet.
             // but the timeout is tricky since it's basically a race condition so we only assert on the success case.
@@ -1764,6 +1838,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             }
         }
         if (isDefaultSet == false) {
+            //创建默认配置
             profiles.add(new ProfileSettings(settings, DEFAULT_PROFILE));
         }
         return Collections.unmodifiableSet(profiles);

@@ -72,9 +72,11 @@ public class DiscoveryNode implements Writeable, ToXContentFragment {
     private final String nodeId;
     private final String ephemeralId;
     private final String hostName;
+    //主机地址
     private final String hostAddress;
     private final TransportAddress address;
     private final Map<String, String> attributes;
+    //elasticsearch 版本
     private final Version version;
     private final Set<Role> roles;
 

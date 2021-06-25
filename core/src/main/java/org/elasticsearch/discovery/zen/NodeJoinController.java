@@ -175,10 +175,17 @@ public class NodeJoinController extends AbstractComponent {
      * Note: doesn't do any validation. This should have been done before.
      */
     public synchronized void handleJoinRequest(final DiscoveryNode node, final MembershipAction.JoinCallback callback) {
+        //有两种情况是因为
+        //if 分支 多了这两个任务 BECOME_MASTER_TASK FINISH_ELECTION_TASK
+        // 这两个任务是用于处理成为主节点逻辑，后面发送集群状态逻辑 这些逻辑只会执行一次就足够了
+        //else 分支不需要在执行上面那两个任务，直接加入节点进来就可
         if (electionContext != null) {
+            //如果是临时主节点等待集群加入 electionContext 不会是空，这个等待时间为30s
             electionContext.addIncomingJoin(node, callback);
             checkPendingJoinsAndElectIfNeeded();
         } else {
+            //electionContext 已经关闭了，这个时候已经选出主节点
+            //处理其他节点加入情况
             masterService.submitStateUpdateTask("zen-disco-node-join",
                 node, ClusterStateTaskConfig.build(Priority.URGENT),
                 joinTaskExecutor, new JoinTaskListener(callback, logger));
@@ -192,12 +199,14 @@ public class NodeJoinController extends AbstractComponent {
     private synchronized void checkPendingJoinsAndElectIfNeeded() {
         assert electionContext != null : "election check requested but no active context";
         final int pendingMasterJoins = electionContext.getPendingMasterJoinsCount();
+        //集群是否有足够节点
         if (electionContext.isEnoughPendingJoins(pendingMasterJoins) == false) {
             if (logger.isTraceEnabled()) {
                 logger.trace("not enough joins for election. Got [{}], required [{}]", pendingMasterJoins,
                     electionContext.requiredMasterJoins);
             }
         } else {
+            //数量够了
             if (logger.isTraceEnabled()) {
                 logger.trace("have enough joins for election. Got [{}], required [{}]", pendingMasterJoins,
                     electionContext.requiredMasterJoins);
@@ -223,7 +232,9 @@ public class NodeJoinController extends AbstractComponent {
 
     class ElectionContext {
         private ElectionCallback callback = null;
+        //还需要多少个节点就可以组成集群
         private int requiredMasterJoins = -1;
+        //key = 要加入集群的节点 value = 响应 callback
         private final Map<DiscoveryNode, List<MembershipAction.JoinCallback>> joinRequestAccumulator = new HashMap<>();
 
         final AtomicBoolean closed = new AtomicBoolean();
@@ -270,6 +281,7 @@ public class NodeJoinController extends AbstractComponent {
             return pendingMasterJoins;
         }
 
+        //处理该节点成为真正的主节点
         public synchronized void closeAndBecomeMaster() {
             assert callback != null : "becoming a master but the callback is not yet set";
             assert isEnoughPendingJoins(getPendingMasterJoinsCount()) : "becoming a master but pending joins of "
@@ -277,6 +289,7 @@ public class NodeJoinController extends AbstractComponent {
 
             innerClose();
 
+            //获取要处理的任务，只要接受到其他节点发过来的加入请求，这个列表才不会空
             Map<DiscoveryNode, ClusterStateTaskListener> tasks = getPendingAsTasks();
             final String source = "zen-disco-elected-as-master ([" + tasks.size() + "] nodes joined)";
 
@@ -285,8 +298,11 @@ public class NodeJoinController extends AbstractComponent {
             masterService.submitStateUpdateTasks(source, tasks, ClusterStateTaskConfig.build(Priority.URGENT), joinTaskExecutor);
         }
 
+        //处理该节点不是主节点
         public synchronized void closeAndProcessPending(String reason) {
             innerClose();
+            //获取要处理的任务，只要接受到其他节点发过来的加入请求，这个列表才不会空
+            //这里基本是空
             Map<DiscoveryNode, ClusterStateTaskListener> tasks = getPendingAsTasks();
             final String source = "zen-disco-election-stop [" + reason + "]";
             tasks.put(FINISH_ELECTION_TASK, electionFinishedListener);
@@ -330,6 +346,7 @@ public class NodeJoinController extends AbstractComponent {
 
             @Override
             public void clusterStateProcessed(String source, ClusterState oldState, ClusterState newState) {
+                //如果本地节点是主节点
                 if (newState.nodes().isLocalNodeElectedMaster()) {
                     ElectionContext.this.onElectedAsMaster(newState);
                 } else {
@@ -411,23 +428,28 @@ public class NodeJoinController extends AbstractComponent {
         public ClusterTasksResult<DiscoveryNode> execute(ClusterState currentState, List<DiscoveryNode> joiningNodes) throws Exception {
             final ClusterTasksResult.Builder<DiscoveryNode> results = ClusterTasksResult.builder();
 
+            //旧集群状态
             final DiscoveryNodes currentNodes = currentState.nodes();
             boolean nodesChanged = false;
             ClusterState.Builder newState;
 
             if (joiningNodes.size() == 1  && joiningNodes.get(0).equals(FINISH_ELECTION_TASK)) {
+                //这种情况是非主节点关闭情况
                 return results.successes(joiningNodes).build(currentState);
             } else if (currentNodes.getMasterNode() == null && joiningNodes.contains(BECOME_MASTER_TASK)) {
+                //处理临时节点到主节点逻辑
                 assert joiningNodes.contains(FINISH_ELECTION_TASK) : "becoming a master but election is not finished " + joiningNodes;
                 // use these joins to try and become the master.
                 // Note that we don't have to do any validation of the amount of joining nodes - the commit
                 // during the cluster state publishing guarantees that we have enough
+                // newState 设置了主节点id 和 去掉 DiscoverySettings.NO_MASTER_BLOCK_ID
                 newState = becomeMasterAndTrimConflictingNodes(currentState, joiningNodes);
                 nodesChanged = true;
             } else if (currentNodes.isLocalNodeElectedMaster() == false) {
                 logger.trace("processing node joins, but we are not the master. current master: {}", currentNodes.getMasterNode());
                 throw new NotMasterException("Node [" + currentNodes.getLocalNode() + "] not master for join request");
             } else {
+                //这时候已经有主节点了
                 newState = ClusterState.builder(currentState);
             }
 
@@ -447,6 +469,7 @@ public class NodeJoinController extends AbstractComponent {
                     logger.debug("received a join request for an existing node [{}]", node);
                 } else {
                     try {
+                        //处理要加入的node
                         if (enforceMajorVersion) {
                             MembershipAction.ensureMajorVersionBarrier(node.getVersion(), minClusterNodeVersion);
                         }
@@ -454,6 +477,7 @@ public class NodeJoinController extends AbstractComponent {
                         // we do this validation quite late to prevent race conditions between nodes joining and importing dangling indices
                         // we have to reject nodes that don't support all indices we have in this cluster
                         MembershipAction.ensureIndexCompatibility(node.getVersion(), currentState.getMetaData());
+                        //加入
                         nodesBuilder.add(node);
                         nodesChanged = true;
                         minClusterNodeVersion = Version.min(minClusterNodeVersion, node.getVersion());
@@ -463,10 +487,13 @@ public class NodeJoinController extends AbstractComponent {
                         continue;
                     }
                 }
+                //标志节点处理成功
                 results.success(node);
             }
             if (nodesChanged) {
+                //把加入集群的节点加入到集群状态
                 newState.nodes(nodesBuilder);
+                //重新分配分片
                 return results.build(allocationService.reroute(newState.build(), "node_join"));
             } else {
                 // we must return a new cluster state instance to force publishing. This is important
@@ -479,6 +506,7 @@ public class NodeJoinController extends AbstractComponent {
             assert currentState.nodes().getMasterNodeId() == null : currentState;
             DiscoveryNodes currentNodes = currentState.nodes();
             DiscoveryNodes.Builder nodesBuilder = DiscoveryNodes.builder(currentNodes);
+            //设置本地节点id为主节点id
             nodesBuilder.masterNodeId(currentState.nodes().getLocalNodeId());
 
             for (final DiscoveryNode joiningNode : joiningNodes) {

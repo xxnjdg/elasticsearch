@@ -48,10 +48,12 @@ import java.util.function.LongConsumer;
 public class RecoveriesCollection {
 
     /** This is the single source of truth for ongoing recoveries. If it's not here, it was canceled or done */
+    //key = RecoveryTarget.recoveryId
     private final ConcurrentMap<Long, RecoveryTarget> onGoingRecoveries = ConcurrentCollections.newConcurrentMap();
 
     private final Logger logger;
     private final ThreadPool threadPool;
+    //this::waitForClusterState
     private final LongConsumer ensureClusterStateVersionCallback;
 
     public RecoveriesCollection(Logger logger, ThreadPool threadPool, LongConsumer ensureClusterStateVersionCallback) {
@@ -73,6 +75,7 @@ public class RecoveriesCollection {
     }
 
     private void startRecoveryInternal(RecoveryTarget recoveryTarget, TimeValue activityTimeout) {
+        //加紧
         RecoveryTarget existingTarget = onGoingRecoveries.putIfAbsent(recoveryTarget.recoveryId(), recoveryTarget);
         assert existingTarget == null : "found two RecoveryStatus instances with the same id";
         logger.trace("{} started recovery from {}, id [{}]", recoveryTarget.shardId(), recoveryTarget.sourceNode(),
@@ -257,6 +260,7 @@ public class RecoveriesCollection {
 
     private class RecoveryMonitor extends AbstractRunnable {
         private final long recoveryId;
+        //30s
         private final TimeValue checkInterval;
 
         private long lastSeenAccessTime;

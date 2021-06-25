@@ -119,6 +119,8 @@ public class PublishClusterStateAction extends AbstractComponent {
      * The method is guaranteed to throw a {@link org.elasticsearch.discovery.Discovery.FailedToCommitClusterStateException}
      * if the change is not committed and should be rejected.
      * Any other exception signals the something wrong happened but the change is committed.
+     *
+     * //主节点把新的集群状态发送给其他集群节点
      */
     public void publish(final ClusterChangedEvent clusterChangedEvent, final int minMasterNodes,
                         final Discovery.AckListener ackListener) throws Discovery.FailedToCommitClusterStateException {
@@ -135,9 +137,11 @@ public class PublishClusterStateAction extends AbstractComponent {
             final int totalMasterNodes = nodes.getMasterNodes().size();
             for (final DiscoveryNode node : nodes) {
                 if (node.equals(localNode) == false) {
+                    //把主节点排除，放下要发送状态的节点
                     nodesToPublishTo.add(node);
                 }
             }
+            //是否发送完整状态？
             sendFullVersion = !discoverySettings.getPublishDiff() || clusterChangedEvent.previousState() == null;
             serializedStates = new HashMap<>();
             serializedDiffs = new HashMap<>();
@@ -158,6 +162,7 @@ public class PublishClusterStateAction extends AbstractComponent {
         }
 
         try {
+            //发送
             innerPublish(clusterChangedEvent, nodesToPublishTo, sendingController, sendFullVersion, serializedStates, serializedDiffs);
         } catch (Discovery.FailedToCommitClusterStateException t) {
             throw t;
@@ -172,12 +177,14 @@ public class PublishClusterStateAction extends AbstractComponent {
         }
     }
 
+    //发送
     private void innerPublish(final ClusterChangedEvent clusterChangedEvent, final Set<DiscoveryNode> nodesToPublishTo,
                               final SendingController sendingController, final boolean sendFullVersion,
                               final Map<Version, BytesReference> serializedStates, final Map<Version, BytesReference> serializedDiffs) {
 
         final ClusterState clusterState = clusterChangedEvent.state();
         final ClusterState previousState = clusterChangedEvent.previousState();
+        //默认30s
         final TimeValue publishTimeout = discoverySettings.getPublishTimeout();
 
         final long publishingStartInNanos = System.nanoTime();
@@ -187,17 +194,20 @@ public class PublishClusterStateAction extends AbstractComponent {
             // per node when we send it over the wire, compress it while we are at it...
             // we don't send full version if node didn't exist in the previous version of cluster state
             if (sendFullVersion || !previousState.nodes().nodeExists(node)) {
+                //如果之前集群状态没有这个节点，说明节点是加入进来的
                 sendFullClusterState(clusterState, serializedStates, node, publishTimeout, sendingController);
             } else {
                 sendClusterStateDiff(clusterState, serializedDiffs, serializedStates, node, publishTimeout, sendingController);
             }
         }
 
+        //等待30s
         sendingController.waitForCommit(discoverySettings.getCommitTimeout());
 
         try {
             long timeLeftInNanos = Math.max(0, publishTimeout.nanos() - (System.nanoTime() - publishingStartInNanos));
             final BlockingClusterStatePublishResponseHandler publishResponseHandler = sendingController.getPublishResponseHandler();
+            //等待 30s - 上面方法执行的时间
             sendingController.setPublishingTimedOut(!publishResponseHandler.awaitAllNodes(TimeValue.timeValueNanos(timeLeftInNanos)));
             if (sendingController.getPublishingTimedOut()) {
                 DiscoveryNode[] pendingNodes = publishResponseHandler.pendingNodes();
@@ -217,11 +227,14 @@ public class PublishClusterStateAction extends AbstractComponent {
                                              boolean sendFullVersion, Map<Version, BytesReference> serializedStates,
                                              Map<Version, BytesReference> serializedDiffs) {
         Diff<ClusterState> diff = null;
+        //遍历要发送的节点
         for (final DiscoveryNode node : nodesToPublishTo) {
             try {
+                //如果要发送集群状态的节点，在这之前的集群状态不存在，也就是刚加入，需要发送全部
                 if (sendFullVersion || !previousState.nodes().nodeExists(node)) {
                     // will send a full reference
                     if (serializedStates.containsKey(node.getVersion()) == false) {
+                        //写入集群状态
                         serializedStates.put(node.getVersion(), serializeFullClusterState(clusterState, node.getVersion()));
                     }
                 } else {
@@ -254,6 +267,7 @@ public class PublishClusterStateAction extends AbstractComponent {
                 return;
             }
         }
+        //发送
         sendClusterStateToNode(clusterState, bytes, node, publishTimeout, sendingController, false, serializedStates);
     }
 
@@ -265,6 +279,7 @@ public class PublishClusterStateAction extends AbstractComponent {
         sendClusterStateToNode(clusterState, bytes, node, publishTimeout, sendingController, true, serializedStates);
     }
 
+    //发送集群状态给node
     private void sendClusterStateToNode(final ClusterState clusterState, BytesReference bytes,
                                         final DiscoveryNode node,
                                         final TimeValue publishTimeout,
@@ -288,6 +303,7 @@ public class PublishClusterStateAction extends AbstractComponent {
                                 logger.debug("node {} responded for cluster state [{}] (took longer than [{}])", node,
                                     clusterState.version(), publishTimeout);
                             }
+                            //响应后执行
                             sendingController.onNodeSendAck(node);
                         }
 
@@ -328,6 +344,7 @@ public class PublishClusterStateAction extends AbstractComponent {
                             if (sendingController.getPublishingTimedOut()) {
                                 logger.debug("node {} responded to cluster state commit [{}]", node, clusterState.version());
                             }
+                            //
                             sendingController.getPublishResponseHandler().onResponse(node);
                         }
 
@@ -369,8 +386,10 @@ public class PublishClusterStateAction extends AbstractComponent {
     }
 
     private Object lastSeenClusterStateMutex = new Object();
+    //接受新的集群状态
     private ClusterState lastSeenClusterState;
 
+    //处理请求
     protected void handleIncomingClusterStateRequest(BytesTransportRequest request, TransportChannel channel) throws IOException {
         Compressor compressor = CompressorFactory.compressor(request.bytes());
         StreamInput in = request.bytes().streamInput();
@@ -384,6 +403,7 @@ public class PublishClusterStateAction extends AbstractComponent {
                 final ClusterState incomingState;
                 // If true we received full cluster state - otherwise diffs
                 if (in.readBoolean()) {
+                    //解析出收到的新集群状态
                     incomingState = ClusterState.readFrom(in, transportService.getLocalNode());
                     fullClusterStateReceivedCount.incrementAndGet();
                     logger.debug("received full cluster state version [{}] with size [{}]", incomingState.version(),
@@ -410,6 +430,7 @@ public class PublishClusterStateAction extends AbstractComponent {
         channel.sendResponse(TransportResponse.Empty.INSTANCE);
     }
 
+    //处理提交请求
     protected void handleCommitRequest(CommitClusterStateRequest request, final TransportChannel channel) {
         incomingClusterStateListener.onClusterStateCommitted(request.stateUUID, new ActionListener<Void>() {
 
@@ -484,19 +505,25 @@ public class PublishClusterStateAction extends AbstractComponent {
      */
     class SendingController {
 
+        //新集群状态
         private final ClusterState clusterState;
 
         public BlockingClusterStatePublishResponseHandler getPublishResponseHandler() {
             return publishResponseHandler;
         }
 
+        //AckClusterStatePublishResponseHandler
         private final BlockingClusterStatePublishResponseHandler publishResponseHandler;
+        //响应后的节点加入队列
         final ArrayList<DiscoveryNode> sendAckedBeforeCommit = new ArrayList<>();
 
         // writes and reads of these are protected under synchronization
         final CountDownLatch committedOrFailedLatch; // 0 count indicates that a decision was made w.r.t committing or failing
+        //fasle
         boolean committed;  // true if cluster state was committed
+        //1
         int neededMastersToCommit; // number of master nodes acks still needed before committing
+        //1
         int pendingMasterNodes; // how many master node still need to respond
 
         // an external marker to note that the publishing process is timed out. This is useful for proper logging.
@@ -564,9 +591,11 @@ public class PublishClusterStateAction extends AbstractComponent {
             logger.trace("master node {} acked cluster state version [{}]. processing ... (current pending [{}], needed [{}])",
                     masterNode, clusterState.version(), pendingMasterNodes, neededMastersToCommit);
             neededMastersToCommit--;
+            //neededMastersToCommit == 0 说明达到数量的节点响应回来了
             if (neededMastersToCommit == 0) {
                 if (markAsCommitted()) {
                     for (DiscoveryNode nodeToCommit : sendAckedBeforeCommit) {
+                        //发送提交状态
                         sendCommitToNode(nodeToCommit, clusterState, this);
                     }
                     sendAckedBeforeCommit.clear();

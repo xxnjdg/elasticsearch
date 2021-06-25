@@ -63,6 +63,7 @@ public class NodeConnectionsService extends AbstractLifecycleComponent {
 
     // map between current node and the number of failed connection attempts. 0 means successfully connected.
     // if a node doesn't appear in this list it shouldn't be monitored
+    //记录握手过的节点
     private ConcurrentMap<DiscoveryNode, Integer> nodes = ConcurrentCollections.newConcurrentMap();
 
     private final KeyedLock<DiscoveryNode> nodeLocks = new KeyedLock<>();

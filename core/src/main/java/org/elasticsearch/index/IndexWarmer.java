@@ -47,6 +47,8 @@ import java.util.concurrent.TimeUnit;
 
 public final class IndexWarmer extends AbstractComponent {
 
+    //new BitSetProducerWarmer(threadPool)
+    //new FieldDataWarmer(executor, indexFieldDataService)
     private final List<Listener> listeners;
 
     IndexWarmer(Settings settings, ThreadPool threadPool, IndexFieldDataService indexFieldDataService,

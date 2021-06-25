@@ -59,9 +59,12 @@ final class DocumentParser {
 
         final Mapping mapping = docMapper.mapping();
         final ParseContext.InternalParseContext context;
+        //json
         final XContentType xContentType = source.getXContentType();
 
+        //创建了json解析器
         try (XContentParser parser = XContentHelper.createParser(docMapperParser.getXContentRegistry(), source.source(), xContentType)) {
+            //创建解析上下文
             context = new ParseContext.InternalParseContext(indexSettings.getSettings(), docMapperParser, docMapper, source, parser);
             validateStart(parser);
             internalParseDocument(mapping, context, parser);
@@ -80,8 +83,10 @@ final class DocumentParser {
     }
 
     private static void internalParseDocument(Mapping mapping, ParseContext.InternalParseContext context, XContentParser parser) throws IOException {
+        //是否是空文档
         final boolean emptyDoc = isEmptyDoc(mapping, parser);
 
+        //增加一些缺省字段
         for (MetadataFieldMapper metadataMapper : mapping.metadataMappers) {
             metadataMapper.preParse(context);
         }
@@ -90,6 +95,7 @@ final class DocumentParser {
             // entire type is disabled
             parser.skipChildren();
         } else if (emptyDoc == false) {
+            //动态解析穿入的json数据成字段
             parseObjectOrNested(context, mapping.root);
         }
 
@@ -356,6 +362,7 @@ final class DocumentParser {
             return;
         }
 
+        //获取当前字段名
         String currentFieldName = parser.currentName();
         if (token.isValue()) {
             throw new MapperParsingException("object mapping for [" + mapper.name() + "] tried to parse field [" + currentFieldName + "] as object, but found a concrete value");
@@ -395,6 +402,7 @@ final class DocumentParser {
             } else if (token == XContentParser.Token.START_ARRAY) {
                 parseArray(context, mapper, currentFieldName);
             } else if (token == XContentParser.Token.FIELD_NAME) {
+                //解析字段名
                 currentFieldName = parser.currentName();
                 if (MapperService.isMetadataField(context.path().pathAsText(currentFieldName))) {
                     throw new MapperParsingException("Field [" + currentFieldName + "] is a metadata field and cannot be added inside a document. Use the index API request parameters.");
@@ -404,6 +412,7 @@ final class DocumentParser {
             } else if (token == null) {
                 throw new MapperParsingException("object mapping for [" + mapper.name() + "] tried to parse field [" + currentFieldName + "] as object, but got EOF, has a concrete value been provided to it?");
             } else if (token.isValue()) {
+                //解析字段值
                 parseValue(context, mapper, currentFieldName, token);
             }
             token = parser.nextToken();
@@ -596,6 +605,7 @@ final class DocumentParser {
         }
     }
 
+    //解析值
     private static void parseValue(final ParseContext context, ObjectMapper parentMapper, String currentFieldName, XContentParser.Token token) throws IOException {
         if (currentFieldName == null) {
             throw new MapperParsingException("object mapping [" + parentMapper.name() + "] trying to serialize a value with no field associated with it, current value [" + context.parser().textOrNull() + "]");
@@ -607,8 +617,10 @@ final class DocumentParser {
             parseObjectOrField(context, mapper);
         } else {
             currentFieldName = paths[paths.length - 1];
+            //
             Tuple<Integer, ObjectMapper> parentMapperTuple = getDynamicParentMapper(context, paths, parentMapper);
             parentMapper = parentMapperTuple.v2();
+            //解析
             parseDynamicValue(context, parentMapper, currentFieldName, token);
             for (int i = 0; i < parentMapperTuple.v1(); i++) {
                 context.path().remove();
@@ -693,10 +705,12 @@ final class DocumentParser {
 
     private static Mapper.Builder<?,?> createBuilderFromDynamicValue(final ParseContext context, XContentParser.Token token, String currentFieldName) throws IOException {
         if (token == XContentParser.Token.VALUE_STRING) {
+            //获取值
             String text = context.parser().text();
 
             boolean parseableAsLong = false;
             try {
+                //是否是Long
                 Long.parseLong(text);
                 parseableAsLong = true;
             } catch (NumberFormatException e) {
@@ -705,6 +719,7 @@ final class DocumentParser {
 
             boolean parseableAsDouble = false;
             try {
+                //是否是doublle
                 Double.parseDouble(text);
                 parseableAsDouble = true;
             } catch (NumberFormatException e) {
@@ -748,8 +763,10 @@ final class DocumentParser {
                 }
             }
 
+            //找出存在模板
             Mapper.Builder builder = context.root().findTemplateBuilder(context, currentFieldName, XContentFieldType.STRING);
             if (builder == null) {
+                //如果没有，创建
                 builder = new TextFieldMapper.Builder(currentFieldName)
                         .addMultiField(new KeywordFieldMapper.Builder("keyword").ignoreAbove(256));
             }
@@ -795,6 +812,7 @@ final class DocumentParser {
     }
 
     private static void parseDynamicValue(final ParseContext context, ObjectMapper parentMapper, String currentFieldName, XContentParser.Token token) throws IOException {
+        //是否是动态
         ObjectMapper.Dynamic dynamic = dynamicOrDefault(parentMapper, context);
         if (dynamic == ObjectMapper.Dynamic.STRICT) {
             throw new StrictDynamicMappingException(parentMapper.fullPath(), currentFieldName);
@@ -804,6 +822,7 @@ final class DocumentParser {
         }
         final String path = context.path().pathAsText(currentFieldName);
         final Mapper.BuilderContext builderContext = new Mapper.BuilderContext(context.indexSettings(), context.path());
+        //是否有字段映射
         final MappedFieldType existingFieldType = context.mapperService().fullName(path);
         final Mapper.Builder builder;
         if (existingFieldType != null) {
@@ -953,6 +972,7 @@ final class DocumentParser {
                         + mapper.name() + "]");
             }
         }
+        //获取字段映射
         return objectMapper.getMapper(subfields[subfields.length - 1]);
     }
 }

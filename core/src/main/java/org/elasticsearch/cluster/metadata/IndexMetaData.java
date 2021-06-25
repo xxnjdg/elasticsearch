@@ -299,29 +299,40 @@ public class IndexMetaData implements Diffable<IndexMetaData>, ToXContentFragmen
     public static final String KEY_PRIMARY_TERMS = "primary_terms";
 
     public static final String INDEX_STATE_FILE_PREFIX = "state-";
+    //5
     private final int routingNumShards;
+    //outingNumShards / numberOfShards
     private final int routingFactor;
+    //默认 1
     private final int routingPartitionSize;
 
+    //主分片数量，默认5，副本数量，默认1
     private final int numberOfShards;
     private final int numberOfReplicas;
 
+    //索引
     private final Index index;
+    //版本号，从1开始
     private final long version;
+    //分配大小等于主分片大小，用于区分多个主分片哪个新哪个旧
     private final long[] primaryTerms;
 
+    //State.OPEN
     private final State state;
 
     private final ImmutableOpenMap<String, AliasMetaData> aliases;
 
+    //setting 和 node setting 不同
     private final Settings settings;
 
     private final ImmutableOpenMap<String, MappingMetaData> mappings;
 
     private final ImmutableOpenMap<String, Custom> customs;
 
+    //key = 分片id value = 分片 AllocationId 集合，只有分片是started状态才会加入集合中
     private final ImmutableOpenIntMap<Set<String>> inSyncAllocationIds;
 
+    //总共分片数量，主分片和福分片，默认10
     private final transient int totalNumberOfShards;
 
     private final DiscoveryNodeFilters requireFilters;
@@ -329,6 +340,7 @@ public class IndexMetaData implements Diffable<IndexMetaData>, ToXContentFragmen
     private final DiscoveryNodeFilters excludeFilters;
     private final DiscoveryNodeFilters initialRecoveryFilters;
 
+    //es版本号
     private final Version indexCreatedVersion;
     private final Version indexUpgradedVersion;
 

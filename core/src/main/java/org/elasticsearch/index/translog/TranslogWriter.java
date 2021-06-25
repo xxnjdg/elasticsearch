@@ -56,12 +56,14 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
     private final ShardId shardId;
     private final ChannelFactory channelFactory;
     // the last checkpoint that was written when the translog was last synced
+    //最新一次 Checkpoint
     private volatile Checkpoint lastSyncedCheckpoint;
     /* the number of translog operations written to this file */
     private volatile int operationCounter;
     /* if we hit an exception that we can't recover from we assign it to this var and ship it with every AlreadyClosedException we throw */
     private volatile Exception tragedy;
     /* A buffered outputstream what writes to the writers channel */
+    //translog-1.tlog 文件输出流
     private final OutputStream outputStream;
     /* the total offset of this file including the bytes written to the file as well as into the buffer */
     private volatile long totalOffset;
@@ -69,7 +71,9 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
     private volatile long minSeqNo;
     private volatile long maxSeqNo;
 
+    //() -> seqNoService.getGlobalCheckpoint()
     private final LongSupplier globalCheckpointSupplier;
+    //this::getMinFileGeneration
     private final LongSupplier minTranslogGenerationSupplier;
 
     protected final AtomicBoolean closed = new AtomicBoolean(false);
@@ -124,6 +128,7 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
         throws IOException {
         final BytesRef ref = new BytesRef(translogUUID);
         final int firstOperationOffset = getHeaderLength(ref.length);
+        //打开 translog-1.tlog 文件
         final FileChannel channel = channelFactory.open(file);
         try {
             // This OutputStreamDataOutput is intentionally not closed because

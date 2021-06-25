@@ -68,6 +68,7 @@ public class PageCacheRecycler extends AbstractComponent implements Releasable {
     protected PageCacheRecycler(Settings settings) {
         super(settings);
         final Type type = TYPE_SETTING .get(settings);
+        //默认堆内存大小 * 10%
         final long limit = LIMIT_HEAP_SETTING .get(settings).getBytes();
         final int availableProcessors = EsExecutors.numberOfProcessors(settings);
 
@@ -90,9 +91,14 @@ public class PageCacheRecycler extends AbstractComponent implements Releasable {
         final double objectsWeight = WEIGHT_OBJECTS_SETTING .get(settings);
 
         final double totalWeight = bytesWeight + intsWeight + longsWeight + objectsWeight;
+        //总共多少页，一页16kb
         final int maxPageCount = (int) Math.min(Integer.MAX_VALUE, limit / BigArrays.PAGE_SIZE_IN_BYTES);
 
+        //按照 bytesWeight 权重去分 maxPageCount 页，得到 maxBytePageCount
         final int maxBytePageCount = (int) (bytesWeight * maxPageCount / totalWeight);
+        //构建 bytePage，需要时会创建字节数组，只要创建的数组数量没有大于 maxBytePageCount 就不会释放，循环使用
+        //但是可以创建数组的数量可以超过 maxBytePageCount，这些多余的数组不使用就会释放
+        //intPage 。。。 等都是一样
         bytePage = build(type, maxBytePageCount, availableProcessors, new AbstractRecyclerC<byte[]>() {
             @Override
             public byte[] newInstance(int sizing) {
@@ -143,8 +149,10 @@ public class PageCacheRecycler extends AbstractComponent implements Releasable {
         assert BigArrays.PAGE_SIZE_IN_BYTES * (maxBytePageCount + maxIntPageCount + maxLongPageCount + maxObjectPageCount) <= limit;
     }
 
+    //获取字节数组
     public Recycler.V<byte[]> bytePage(boolean clear) {
         final Recycler.V<byte[]> v = bytePage.obtain();
+        //刚创建的数组 和  clear 为 false 都不会请0
         if (v.isRecycled() && clear) {
             Arrays.fill(v.v(), (byte) 0);
         }
@@ -177,6 +185,7 @@ public class PageCacheRecycler extends AbstractComponent implements Releasable {
         if (limit == 0) {
             recycler = none(c);
         } else {
+            //一般limit都会分到页
             recycler = type.build(c, limit, availableProcessors);
         }
         return recycler;
@@ -192,6 +201,7 @@ public class PageCacheRecycler extends AbstractComponent implements Releasable {
         CONCURRENT {
             @Override
             <T> Recycler<T> build(Recycler.C<T> c, int limit, int availableProcessors) {
+                //默认情况
                 return concurrent(dequeFactory(c, limit / availableProcessors), availableProcessors);
             }
         },

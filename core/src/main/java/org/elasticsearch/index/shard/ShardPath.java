@@ -115,6 +115,7 @@ public final class ShardPath {
      */
     public static ShardPath loadShardPath(Logger logger, NodeEnvironment env, ShardId shardId, IndexSettings indexSettings) throws IOException {
         final String indexUUID = indexSettings.getUUID();
+        //返回 ${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}
         final Path[] paths = env.availableShardPaths(shardId);
         Path loadedPath = null;
         for (Path path : paths) {

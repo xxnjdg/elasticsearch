@@ -88,6 +88,7 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
     @Nullable
     private String parent;
 
+    //请求体
     private BytesReference source;
 
     private OpType opType = OpType.INDEX;
@@ -95,6 +96,7 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
     private long version = Versions.MATCH_ANY;
     private VersionType versionType = VersionType.INTERNAL;
 
+    //请求体类型，类如json
     private XContentType contentType;
 
     private String pipeline;

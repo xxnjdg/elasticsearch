@@ -119,6 +119,7 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
             return;
         }
         final Balancer balancer = new Balancer(logger, allocation, weightFunction, threshold);
+        //
         balancer.allocateUnassigned();
         balancer.moveShards();
         balancer.balance();
@@ -190,7 +191,9 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
 
         private final float indexBalance;
         private final float shardBalance;
+        //0.45
         private final float theta0;
+        //0.55
         private final float theta1;
 
 
@@ -643,6 +646,7 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
             // Iterate over the started shards interleaving between nodes, and check if they can remain. In the presence of throttling
             // shard movements, the goal of this iteration order is to achieve a fairer movement of shards from the nodes that are
             // offloading the shards.
+            //遍历所有节点分片
             for (Iterator<ShardRouting> it = allocation.routingNodes().nodeInterleavedShardIterator(); it.hasNext(); ) {
                 ShardRouting shardRouting = it.next();
                 final MoveDecision moveDecision = decideMove(shardRouting);
@@ -799,6 +803,7 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
              * if we allocate for instance (0, R, IDX1) we move the second replica to the secondary array and proceed with
              * the next replica. If we could not find a node to allocate (0,R,IDX1) we move all it's replicas to ignoreUnassigned.
              */
+            //获取所有分片，unassigned 数组清0
             ShardRouting[] primary = unassigned.drain();
             ShardRouting[] secondary = new ShardRouting[primary.length];
             int secondaryLength = 0;
@@ -808,9 +813,11 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
             do {
                 for (int i = 0; i < primaryLength; i++) {
                     ShardRouting shard = primary[i];
+                    //优先把分片分给较少分片的节点,如果刚开始都没有分片，会轮询分配给节点
                     AllocateUnassignedDecision allocationDecision = decideAllocateUnassigned(shard, throttledNodes);
                     final String assignedNodeId = allocationDecision.getTargetNode() != null ?
                                                       allocationDecision.getTargetNode().getId() : null;
+                    //获取分片所在节点
                     final ModelNode minNode = assignedNodeId != null ? nodes.get(assignedNodeId) : null;
 
                     if (allocationDecision.getAllocationDecision() == AllocationDecision.YES) {
@@ -820,6 +827,7 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
 
                         final long shardSize = DiskThresholdDecider.getExpectedShardSize(shard, allocation,
                             ShardRouting.UNAVAILABLE_EXPECTED_SHARD_SIZE);
+                        //初始化分片
                         shard = routingNodes.initializeShard(shard, minNode.getNodeId(), null, shardSize, allocation.changes());
                         minNode.addShard(shard);
                         if (!shard.primary()) {
@@ -882,12 +890,14 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
          * is of type {@link Type#NO}, then the assigned node will be null.
          */
         private AllocateUnassignedDecision decideAllocateUnassigned(final ShardRouting shard, final Set<ModelNode> throttledNodes) {
+            //分片是否分给node
             if (shard.assignedToNode()) {
                 // we only make decisions for unassigned shards here
                 return AllocateUnassignedDecision.NOT_TAKEN;
             }
 
             final boolean explain = allocation.debugDecision();
+            //主分片都会是yes,副分片是no
             Decision shardLevelDecision = allocation.deciders().canAllocate(shard, allocation);
             if (shardLevelDecision.type() == Type.NO && explain == false) {
                 // NO decision for allocating the shard, irrespective of any particular node, so exit early
@@ -1048,7 +1058,9 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
     }
 
     static class ModelNode implements Iterable<ModelIndex> {
+        //索引数组 key = 索引名
         private final Map<String, ModelIndex> indices = new HashMap<>();
+        //分片数
         private int numShards = 0;
         private final RoutingNode routingNode;
 
@@ -1126,6 +1138,7 @@ public class BalancedShardsAllocator extends AbstractComponent implements Shards
     }
 
     static final class ModelIndex implements Iterable<ShardRouting> {
+        //索引名
         private final String id;
         private final Set<ShardRouting> shards = new HashSet<>(4); // expect few shards of same index to be allocated on same node
         private int highestPrimary = -1;

@@ -203,6 +203,8 @@ public class MetaDataCreateIndexService extends AbstractComponent {
      *
      * @param request the index creation cluster state update request
      * @param listener the listener on which to send the index creation cluster state update response
+     *
+     * 创建索引
      */
     public void createIndex(final CreateIndexClusterStateUpdateRequest request,
                             final ActionListener<CreateIndexClusterStateUpdateResponse> listener) {
@@ -228,6 +230,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
         Settings build = updatedSettingsBuilder.put(request.settings()).normalizePrefix(IndexMetaData.INDEX_SETTING_PREFIX).build();
         indexScopedSettings.validate(build, true); // we do validate here - index setting must be consistent
         request.settings(build);
+        //提交任务
         clusterService.submitStateUpdateTask("create-index [" + request.index() + "], cause [" + request.cause() + "]",
             new IndexCreationTask(logger, allocationService, request, listener, indicesService, aliasValidator, xContentRegistry, settings,
                 this::validate));
@@ -274,6 +277,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
             String removalExtraInfo = null;
             IndexRemovalReason removalReason = IndexRemovalReason.FAILURE;
             try {
+                //校验
                 validator.validate(request, currentState);
 
                 for (Alias alias : request.aliases()) {
@@ -282,6 +286,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
 
                 // we only find a template when its an API call (a new index)
                 // find templates, highest order are better matching
+                // 从集群状态元数据找出 templates
                 List<IndexTemplateMetaData> templates = findTemplates(request, currentState);
 
                 Map<String, Custom> customs = new HashMap<>();
@@ -293,10 +298,12 @@ public class MetaDataCreateIndexService extends AbstractComponent {
 
                 List<String> templateNames = new ArrayList<>();
 
+                //从请求中解析出mappings
                 for (Map.Entry<String, String> entry : request.mappings().entrySet()) {
                     mappings.put(entry.getKey(), MapperService.parseMapping(xContentRegistry, entry.getValue()));
                 }
 
+                // TODO: 2021/5/7 xxnjdg customs 和 recoverFromIndex 是什么？
                 for (Map.Entry<String, Custom> entry : request.customs().entrySet()) {
                     customs.put(entry.getKey(), entry.getValue());
                 }
@@ -361,6 +368,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
                     }
                 }
                 // now, put the request settings, so they override templates
+                //设置请求 settings，如果请求没有setting,使用默认值,覆盖 templates 重复值
                 indexSettingsBuilder.put(request.settings());
                 if (indexSettingsBuilder.get(SETTING_NUMBER_OF_SHARDS) == null) {
                     indexSettingsBuilder.put(SETTING_NUMBER_OF_SHARDS, settings.getAsInt(SETTING_NUMBER_OF_SHARDS, 5));
@@ -405,6 +413,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
                         currentState, mappings.keySet(), indexSettingsBuilder, recoverFromIndex, request.index(), request.resizeType());
                 }
                 final Settings actualIndexSettings = indexSettingsBuilder.build();
+                //构造索引元素据把前面初始化好的索引setting设置进来
                 tmpImdBuilder.settings(actualIndexSettings);
 
                 if (recoverFromIndex != null) {
@@ -436,9 +445,12 @@ public class MetaDataCreateIndexService extends AbstractComponent {
                         (tmpImd.getNumberOfReplicas() + 1) + "]");
                 }
                 // create the index here (on the master) to validate it can be created, as well as adding the mapping
+                //在此处（在主数据库上）创建索引以验证是否可以创建索引，以及添加映射
+                //创建索引服务，并加入 mappings
                 final IndexService indexService = indicesService.createIndex(tmpImd, Collections.emptyList());
                 createdIndex = indexService.index();
                 // now add the mappings
+                // TODO: 2021/5/7 xxnjdg 不懂
                 MapperService mapperService = indexService.mapperService();
                 try {
                     mapperService.merge(mappings, MergeReason.MAPPING_UPDATE, request.updateAllTypes());
@@ -507,6 +519,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
 
                 final IndexMetaData indexMetaData;
                 try {
+                    //从新构造了新 indexMetaData
                     indexMetaData = indexMetaDataBuilder.build();
                 } catch (Exception e) {
                     removalExtraInfo = "failed to build index metadata";
@@ -516,6 +529,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
                 indexService.getIndexEventListener().beforeIndexAddedToCluster(indexMetaData.getIndex(),
                     indexMetaData.getSettings());
 
+                //把 indexMetaData 设置进 MetaData，生成新 MetaData
                 MetaData newMetaData = MetaData.builder(currentState.metaData())
                     .put(indexMetaData, false)
                     .build();
@@ -532,11 +546,14 @@ public class MetaDataCreateIndexService extends AbstractComponent {
                 }
                 blocks.updateBlocks(indexMetaData);
 
+                //把 MetaData 设置进 ClusterState，生成新 ClusterState
                 ClusterState updatedState = ClusterState.builder(currentState).blocks(blocks).metaData(newMetaData).build();
 
                 if (request.state() == State.OPEN) {
+                    //重新设置路由表，把 RoutingTable 设置进 ClusterState
                     RoutingTable.Builder routingTableBuilder = RoutingTable.builder(updatedState.routingTable())
                         .addAsNew(updatedState.metaData().index(request.index()));
+                    //返回新状态，得到新集群状态后，开始给节点分配分片
                     updatedState = allocationService.reroute(
                         ClusterState.builder(updatedState).routingTable(routingTableBuilder.build()).build(),
                         "index [" + request.index() + "] created");
@@ -547,6 +564,7 @@ public class MetaDataCreateIndexService extends AbstractComponent {
             } finally {
                 if (createdIndex != null) {
                     // Index was already partially created - need to clean up
+                    //移除
                     indicesService.removeIndex(createdIndex, removalReason, removalExtraInfo);
                 }
             }

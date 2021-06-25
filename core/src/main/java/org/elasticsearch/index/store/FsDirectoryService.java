@@ -66,9 +66,12 @@ public class FsDirectoryService extends DirectoryService {
 
     @Override
     public Directory newDirectory() throws IOException {
+        //${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}/index
         final Path location = path.resolveIndex();
         final LockFactory lockFactory = indexSettings.getValue(INDEX_LOCK_FACTOR_SETTING);
+        //创建文件夹
         Files.createDirectories(location);
+        //创建Directory目录对象, 目录对象表示索引库的位置
         Directory wrapped = newFSDirectory(location, lockFactory);
         Set<String> preLoadExtensions = new HashSet<>(
                 indexSettings.getValue(IndexModule.INDEX_STORE_PRE_LOAD_SETTING));

@@ -46,7 +46,9 @@ public class Index implements Writeable, ToXContentObject {
         INDEX_PARSER.declareString(Builder::uuid, new ParseField(INDEX_UUID_KEY));
     }
 
+    //索引名字
     private final String name;
+    //索引id,随机生成
     private final String uuid;
 
     public Index(String name, String uuid) {

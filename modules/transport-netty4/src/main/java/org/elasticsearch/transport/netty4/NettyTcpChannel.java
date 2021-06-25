@@ -42,6 +42,7 @@ public class NettyTcpChannel implements TcpChannel {
 
     NettyTcpChannel(Channel channel) {
         this.channel = channel;
+        //注册关闭事件
         this.channel.closeFuture().addListener(f -> {
             if (f.isSuccess()) {
                 closeContext.complete(null);
@@ -95,8 +96,9 @@ public class NettyTcpChannel implements TcpChannel {
                 listener.onFailure((Exception) cause);
             }
         });
+        //reference 装成  ByteBuf 发送
         channel.writeAndFlush(Netty4Utils.toByteBuf(reference), writePromise);
-        
+
         if (channel.eventLoop().isShutdown()) {
             listener.onFailure(new TransportException("Cannot send message, event loop is shutting down."));
         }

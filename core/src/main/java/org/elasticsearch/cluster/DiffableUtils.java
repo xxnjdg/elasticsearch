@@ -353,8 +353,10 @@ public final class DiffableUtils {
      */
     public abstract static class MapDiff<K, T, M> implements Diff<M> {
 
+        //删除的内容
         protected final List<K> deletes;
         protected final Map<K, Diff<T>> diffs; // incremental updates
+        //更新的内容
         protected final Map<K, T> upserts; // additions or full updates
         protected final KeySerializer<K> keySerializer;
         protected final ValueSerializer<K, T> valueSerializer;

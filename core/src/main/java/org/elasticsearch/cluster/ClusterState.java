@@ -107,20 +107,26 @@ public class ClusterState implements ToXContentFragment, Diffable<ClusterState> 
 
     public static final long UNKNOWN_VERSION = -1;
 
+    //从0开始
     private final long version;
 
+    //默认使用随机数生成
     private final String stateUUID;
 
+    //分片路由表
     private final RoutingTable routingTable;
 
+    //集群节点
     private final DiscoveryNodes nodes;
 
+    //元素据
     private final MetaData metaData;
 
     private final ClusterBlocks blocks;
 
     private final ImmutableOpenMap<String, Custom> customs;
 
+    //集群名字
     private final ClusterName clusterName;
 
     private final boolean wasReadFromDiff;

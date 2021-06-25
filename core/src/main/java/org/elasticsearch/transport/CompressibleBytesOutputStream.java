@@ -45,8 +45,10 @@ import java.util.zip.DeflaterOutputStream;
  */
 final class CompressibleBytesOutputStream extends StreamOutput {
 
+    //如果不压缩 stream 和 bytesStreamOutput 指向同一个对象
     private final StreamOutput stream;
     private final BytesStream bytesStreamOutput;
+    //是否压缩
     private final boolean shouldCompress;
 
     CompressibleBytesOutputStream(BytesStream bytesStreamOutput, boolean shouldCompress) throws IOException {
@@ -93,6 +95,7 @@ final class CompressibleBytesOutputStream extends StreamOutput {
 
     @Override
     public void close() throws IOException {
+        //发送数据成功后被调用
         if (stream == bytesStreamOutput) {
             assert shouldCompress == false : "If the streams are the same we should not be compressing";
             IOUtils.close(stream);

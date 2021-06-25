@@ -118,6 +118,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
     private final boolean sendRefreshMapping;
     private final List<IndexEventListener> buildInIndexListener;
     private final PrimaryReplicaSyncer primaryReplicaSyncer;
+    //org.elasticsearch.index.seqno.GlobalCheckpointSyncAction.updateGlobalCheckpointForShard
     private final Consumer<ShardId> globalCheckpointSyncer;
 
     @Inject
@@ -226,6 +227,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
 
         updateIndices(event); // can also fail shards, but these are then guaranteed to be in failedShardsCache
 
+        //是否需要创建 IndexService
         createIndices(state);
 
         createOrUpdateShards(state);
@@ -265,6 +267,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
 
     /**
      * Deletes indices (with shard data).
+     * 删除索引
      *
      * @param event cluster change event
      */
@@ -274,6 +277,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
         final String localNodeId = state.nodes().getLocalNodeId();
         assert localNodeId != null;
 
+        //遍历新集群状态没有的索引
         for (Index index : event.indicesDeleted()) {
             if (logger.isDebugEnabled()) {
                 logger.debug("[{}] cleaning index, no longer part of the metadata", index);
@@ -334,6 +338,8 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
      * Removes indices that have no shards allocated to this node. This does not delete the shard data as we wait for enough
      * shard copies to exist in the cluster before deleting shard data (triggered by {@link org.elasticsearch.indices.store.IndicesStore}).
      *
+     * 删除没有分片分配给该节点的索引。 这不会删除分片数据，因为我们在删除分片数据之前等待集群中存在足够的分片副本（由{@link org.elasticsearch.indices.store.IndicesStore}触发）。
+     *
      * @param event the cluster changed event
      */
     private void removeUnallocatedIndices(final ClusterChangedEvent event) {
@@ -393,6 +399,8 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
     /**
      * Removes shards that are currently loaded by indicesService but have disappeared from the routing table of the current node.
      * This method does not delete the shard data.
+     * 删除由indexsService当前加载但已从当前节点的路由表中消失的分片。
+     * 此方法不会删除分片数据。
      *
      * @param state new cluster state
      */
@@ -434,6 +442,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
             return;
         }
         // create map of indices to create with shards to fail if index creation fails
+        //获取需要创建的索引和分片
         final Map<Index, List<ShardRouting>> indicesToCreate = new HashMap<>();
         for (ShardRouting shardRouting : localRoutingNode) {
             if (failedShardsCache.containsKey(shardRouting.shardId()) == false) {
@@ -451,6 +460,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
 
             AllocatedIndex<? extends Shard> indexService = null;
             try {
+                //创建对应的 IndexService
                 indexService = indicesService.createIndex(indexMetaData, buildInIndexListener);
                 if (indexService.updateMapping(indexMetaData) && sendRefreshMapping) {
                     nodeMappingRefreshAction.nodeMappingRefresh(state.nodes().getMasterNode(),
@@ -510,6 +520,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
     }
 
     private void createOrUpdateShards(final ClusterState state) {
+        //获取当前节点分配到的分片
         RoutingNode localRoutingNode = state.getRoutingNodes().node(state.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             return;
@@ -526,6 +537,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
                 Shard shard = indexService.getShardOrNull(shardId.id());
                 if (shard == null) {
                     assert shardRouting.initializing() : shardRouting + " should have been removed by failMissingShards";
+                    //创建分片
                     createShard(nodes, routingTable, shardRouting, state);
                 } else {
                     updateShard(nodes, shardRouting, shard, routingTable, state);
@@ -534,6 +546,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
         }
     }
 
+    //创建分片
     private void createShard(DiscoveryNodes nodes, RoutingTable routingTable, ShardRouting shardRouting, ClusterState state) {
         assert shardRouting.initializing() : "only allow shard creation for initializing shard but was " + shardRouting;
 
@@ -556,6 +569,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
         }
     }
 
+    //更新分片
     private void updateShard(DiscoveryNodes nodes, ShardRouting shardRouting, Shard shard, RoutingTable routingTable,
                              ClusterState clusterState) {
         final ShardRouting currentRoutingEntry = shard.routingEntry();
@@ -645,7 +659,7 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
         }
 
         @Override
-        public void onRecoveryDone(RecoveryState state) {
+        public void  onRecoveryDone(RecoveryState state) {
             shardStateAction.shardStarted(shardRouting, "after " + state.getRecoverySource(), SHARD_STATE_ACTION_LISTENER);
         }
 

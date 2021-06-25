@@ -71,6 +71,7 @@ public class AllocationId implements ToXContentObject, Writeable {
         }
     }
 
+    //随机数生成
     private final String id;
     @Nullable
     private final String relocationId;

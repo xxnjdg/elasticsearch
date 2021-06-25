@@ -50,8 +50,10 @@ import static java.util.Collections.emptyMap;
 
 public class DocumentMapper implements ToXContentFragment {
 
+    //用于构造 DocumentMapper 的 builder
     public static class Builder {
 
+        //解析
         private Map<Class<? extends MetadataFieldMapper>, MetadataFieldMapper> metadataMappers = new LinkedHashMap<>();
 
         private final RootObjectMapper rootObjectMapper;
@@ -65,8 +67,10 @@ public class DocumentMapper implements ToXContentFragment {
             this.builderContext = new Mapper.BuilderContext(indexSettings, new ContentPath(1));
             this.rootObjectMapper = builder.build(builderContext);
 
+            //type名字
             final String type = rootObjectMapper.name();
             DocumentMapper existingMapper = mapperService.documentMapper(type);
+            //构造 metadataMappers 数组
             for (Map.Entry<String, MetadataFieldMapper.TypeParser> entry : mapperService.mapperRegistry.getMetadataMapperParsers().entrySet()) {
                 final String name = entry.getKey();
                 final MetadataFieldMapper existingMetadataMapper = existingMapper == null
@@ -108,6 +112,7 @@ public class DocumentMapper implements ToXContentFragment {
 
     private final MapperService mapperService;
 
+    //type名字
     private final String type;
     private final Text typeText;
 
@@ -119,8 +124,10 @@ public class DocumentMapper implements ToXContentFragment {
 
     private final DocumentFieldMappers fieldMappers;
 
+    //nul
     private final Map<String, ObjectMapper> objectMappers;
 
+    //false
     private final boolean hasNestedObjects;
 
     public DocumentMapper(MapperService mapperService, Mapping mapping) {
@@ -170,6 +177,7 @@ public class DocumentMapper implements ToXContentFragment {
         this.hasNestedObjects = hasNestedObjects;
 
         try {
+            //type mapping,json 数据
             mappingSource = new CompressedXContent(this, XContentType.JSON, ToXContent.EMPTY_PARAMS);
         } catch (Exception e) {
             throw new ElasticsearchGenerationException("failed to serialize source for type [" + type + "]", e);

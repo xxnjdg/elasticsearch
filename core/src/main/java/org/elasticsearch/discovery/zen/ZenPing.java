@@ -54,12 +54,16 @@ public interface ZenPing extends Releasable {
         // lower values means older pings.
         private long id;
 
+        //集群名字
         private ClusterName clusterName;
 
+        //本地节点
         private DiscoveryNode node;
 
+        //是否存在主节点，如果没有为null
         private DiscoveryNode master;
 
+        //-1
         private long clusterStateVersion;
 
         private PingResponse() {
@@ -159,6 +163,7 @@ public interface ZenPing extends Releasable {
      */
     class PingCollection {
 
+        //只会加入不是本地节点的其他集群节点
         Map<DiscoveryNode, PingResponse> pings;
 
         public PingCollection() {

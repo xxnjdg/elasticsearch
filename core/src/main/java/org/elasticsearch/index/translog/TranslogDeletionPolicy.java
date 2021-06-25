@@ -46,6 +46,7 @@ public class TranslogDeletionPolicy {
      * Records how many retention locks are held against each
      * translog generation
      */
+    //key = generation value = 引用次数
     private final Map<Long, Counter> translogRefCounts = new HashMap<>();
 
     /**
@@ -54,8 +55,10 @@ public class TranslogDeletionPolicy {
      */
     private long minTranslogGenerationForRecovery = 1;
 
+    //512mb
     private long retentionSizeInBytes;
 
+    //12小时
     private long retentionAgeInMillis;
 
     public TranslogDeletionPolicy(long retentionSizeInBytes, long retentionAgeInMillis) {

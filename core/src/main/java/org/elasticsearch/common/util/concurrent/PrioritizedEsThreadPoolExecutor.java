@@ -120,6 +120,7 @@ public class PrioritizedEsThreadPoolExecutor extends EsThreadPoolExecutor {
         current.remove(r);
     }
 
+    //有超时时间
     public void execute(Runnable command, final TimeValue timeout, final Runnable timeoutCallback) {
         command = wrapRunnable(command);
         doExecute(command);

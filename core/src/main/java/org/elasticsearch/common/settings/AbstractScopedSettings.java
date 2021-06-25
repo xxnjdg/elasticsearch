@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractScopedSettings extends AbstractComponent {
     public static final String ARCHIVED_SETTINGS_PREFIX = "archived.";
+    //索引自动加入的setting
     private Settings lastSettingsApplied = Settings.EMPTY;
     private final List<SettingUpdater<?>> settingUpdaters = new CopyOnWriteArrayList<>();
     private final Map<String, Setting<?>> complexMatchers;

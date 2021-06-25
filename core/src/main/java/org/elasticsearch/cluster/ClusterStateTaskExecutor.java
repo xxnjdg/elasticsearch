@@ -72,7 +72,9 @@ public interface ClusterStateTaskExecutor<T> {
      */
     class ClusterTasksResult<T> {
         @Nullable
+        //新的 ClusterState
         public final ClusterState resultingState;
+        //处理结果
         public final Map<T, TaskResult> executionResults;
 
         /**

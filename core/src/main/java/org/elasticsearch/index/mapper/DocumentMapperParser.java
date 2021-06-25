@@ -97,7 +97,9 @@ public class DocumentMapperParser {
             throw new MapperParsingException("Failed to derive type");
         }
 
+        //默认不会null
         if (defaultSource != null) {
+            //从 defaultSource 获取名为 MapperService.DEFAULT_MAPPING 的值 放入 mapping中，默认mapping是空
             Tuple<String, Map<String, Object>> t = extractMapping(MapperService.DEFAULT_MAPPING, defaultSource);
             if (t.v2() != null) {
                 XContentHelper.mergeDefaults(mapping, t.v2());

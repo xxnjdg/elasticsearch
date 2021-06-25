@@ -72,6 +72,7 @@ public class MasterFaultDetection extends FaultDetection {
 
     private final Object masterNodeMutex = new Object();
 
+    //主节点
     private volatile DiscoveryNode masterNode;
 
     private volatile int retryCount;

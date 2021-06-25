@@ -220,13 +220,19 @@ public final class UnassignedInfo implements ToXContentFragment, Writeable {
         }
     }
 
+    //INDEX_CREATED
     private final Reason reason;
     private final long unassignedTimeMillis; // used for display and log messages, in milliseconds
     private final long unassignedTimeNanos; // in nanoseconds, used to calculate delay for delayed shard allocation
+    //false
     private final boolean delayed; // if allocation of this shard is delayed due to INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING
+    //null
     private final String message;
+    //null
     private final Exception failure;
+    //0
     private final int failedAllocations;
+    //AllocationStatus.NO_ATTEMPT
     private final AllocationStatus lastAllocationStatus; // result of the last allocation attempt for this shard
 
     /**

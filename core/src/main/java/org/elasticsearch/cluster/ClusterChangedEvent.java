@@ -44,8 +44,10 @@ public class ClusterChangedEvent {
 
     private final String source;
 
+    //旧集群状态
     private final ClusterState previousState;
 
+    //现在集群状态
     private final ClusterState state;
 
     private final DiscoveryNodes.Delta nodesDelta;

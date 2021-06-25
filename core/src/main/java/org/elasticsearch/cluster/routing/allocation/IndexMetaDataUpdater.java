@@ -109,18 +109,24 @@ public class IndexMetaDataUpdater extends RoutingChangesObserver.AbstractRouting
 
         MetaData.Builder metaDataBuilder = null;
         for (Map.Entry<Index, List<Map.Entry<ShardId, Updates>>> indexChanges : changesGroupedByIndex.entrySet()) {
+            //索引名
             Index index = indexChanges.getKey();
             final IndexMetaData oldIndexMetaData = oldMetaData.getIndexSafe(index);
             IndexMetaData.Builder indexMetaDataBuilder = null;
             for (Map.Entry<ShardId, Updates> shardEntry : indexChanges.getValue()) {
+                //分片id
                 ShardId shardId = shardEntry.getKey();
+                //
                 Updates updates = shardEntry.getValue();
+                //更新 InSyncAllocationIds
                 indexMetaDataBuilder = updateInSyncAllocations(newRoutingTable, oldIndexMetaData, indexMetaDataBuilder, shardId, updates);
+                //更新了主分片 PrimaryTerm
                 indexMetaDataBuilder = updatePrimaryTerm(oldIndexMetaData, indexMetaDataBuilder, shardId, updates);
             }
 
             if (indexMetaDataBuilder != null) {
                 if (metaDataBuilder == null) {
+                    //初始化
                     metaDataBuilder = MetaData.builder(oldMetaData);
                 }
                 metaDataBuilder.put(indexMetaDataBuilder);
@@ -128,6 +134,7 @@ public class IndexMetaDataUpdater extends RoutingChangesObserver.AbstractRouting
         }
 
         if (metaDataBuilder != null) {
+            //返回 MetaData
             return metaDataBuilder.build();
         } else {
             return oldMetaData;
@@ -143,6 +150,7 @@ public class IndexMetaDataUpdater extends RoutingChangesObserver.AbstractRouting
             "allocation ids cannot be both added and removed in the same allocation round, added ids: " +
                 updates.addedAllocationIds + ", removed ids: " + updates.removedAllocationIds;
 
+        //获取旧 inSyncAllocationIds 数组
         Set<String> oldInSyncAllocationIds = oldIndexMetaData.inSyncAllocationIds(shardId.id());
 
         // check if we have been force-initializing an empty primary or a stale primary
@@ -169,6 +177,7 @@ public class IndexMetaDataUpdater extends RoutingChangesObserver.AbstractRouting
         } else {
             // standard path for updating in-sync ids
             Set<String> inSyncAllocationIds = new HashSet<>(oldInSyncAllocationIds);
+            //只有 STARTED 才会被添加进来
             inSyncAllocationIds.addAll(updates.addedAllocationIds);
             inSyncAllocationIds.removeAll(updates.removedAllocationIds);
 
@@ -205,8 +214,10 @@ public class IndexMetaDataUpdater extends RoutingChangesObserver.AbstractRouting
             // be extra safe here and only update in-sync set if it is non-empty
             if (inSyncAllocationIds.isEmpty() == false) {
                 if (indexMetaDataBuilder == null) {
+                    //
                     indexMetaDataBuilder = IndexMetaData.builder(oldIndexMetaData);
                 }
+                //添加 InSyncAllocationIds
                 indexMetaDataBuilder.putInSyncAllocationIds(shardId.id(), inSyncAllocationIds);
             }
         }

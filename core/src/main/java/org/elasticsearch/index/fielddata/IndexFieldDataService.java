@@ -67,6 +67,7 @@ public class IndexFieldDataService extends AbstractIndexComponent implements Clo
         public void onRemoval(ShardId shardId, String fieldName, boolean wasEvicted, long sizeInBytes) {
         }
     };
+    //new FieldDataCacheListener(this)
     private volatile IndexFieldDataCache.Listener listener = DEFAULT_NOOP_LISTENER;
 
 

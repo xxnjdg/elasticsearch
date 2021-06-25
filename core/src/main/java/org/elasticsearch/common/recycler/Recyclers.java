@@ -163,13 +163,16 @@ public enum Recyclers {
 
             {
                 @SuppressWarnings("unchecked")
+                //多处理器情况
                 final Recycler<T>[] recyclers = new Recycler[concurrencyLevel];
                 this.recyclers = recyclers;
                 for (int i = 0; i < concurrencyLevel; ++i) {
+                    //初始化 recyclers 数组， 返回 DequeRecycler 封装成 FilterRecycler 结构返回
                     recyclers[i] = locked(factory.build());
                 }
             }
 
+            //根据线程id选择 slot index
             int slot() {
                 final long id = Thread.currentThread().getId();
                 // don't trust Thread.hashCode to have equiprobable low bits

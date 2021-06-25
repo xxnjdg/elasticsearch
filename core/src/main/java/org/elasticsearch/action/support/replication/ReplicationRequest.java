@@ -55,6 +55,7 @@ public abstract class ReplicationRequest<Request extends ReplicationRequest<Requ
      */
     protected ShardId shardId;
 
+    //默认1分钟，如果不带参数请求
     protected TimeValue timeout = DEFAULT_TIMEOUT;
     protected String index;
 

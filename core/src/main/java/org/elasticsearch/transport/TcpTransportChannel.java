@@ -51,6 +51,7 @@ public final class TcpTransportChannel implements TransportChannel {
         return profileName;
     }
 
+    //发送 Response
     @Override
     public void sendResponse(TransportResponse response) throws IOException {
         sendResponse(response, TransportResponseOptions.EMPTY);

@@ -147,6 +147,7 @@ public abstract class TransportReplicationAction<
         this.syncGlobalCheckpointAfterOperation = syncGlobalCheckpointAfterOperation;
     }
 
+    //注册 action 处理器
     protected void registerRequestHandlers(String actionName, TransportService transportService, Supplier<Request> request,
                                            Supplier<ReplicaRequest> replicaRequest, String executor) {
         transportService.registerRequestHandler(actionName, request, ThreadPool.Names.SAME, new OperationTransportHandler());
@@ -322,6 +323,7 @@ public abstract class TransportReplicationAction<
         @Override
         public void onResponse(PrimaryShardReference primaryShardReference) {
             try {
+                //是否是 IndexShardState.RELOCATED  状态
                 if (primaryShardReference.isRelocated()) {
                     primaryShardReference.close(); // release shard operation lock as soon as possible
                     setPhase(replicationTask, "primary_delegation");
@@ -350,6 +352,7 @@ public abstract class TransportReplicationAction<
                             }
                         });
                 } else {
+                    //正常到这里
                     setPhase(replicationTask, "primary");
                     final ActionListener<Response> listener = createResponseListener(primaryShardReference);
                     createReplicatedOperation(request,
@@ -729,14 +732,19 @@ public abstract class TransportReplicationAction<
             assert request.shardId() != null : "request shardId must be set in resolveRequest";
             assert request.waitForActiveShards() != ActiveShardCount.DEFAULT : "request waitForActiveShards must be set in resolveRequest";
 
+            //根据请求分片id获取主分片
             final ShardRouting primary = primary(state);
             if (retryIfUnavailable(state, primary)) {
                 return;
             }
+            //获取主分片所在的节点
             final DiscoveryNode node = state.nodes().get(primary.currentNodeId());
+            //5 因为当前执行的是写操作，因此只能在primary上完成，所以需要把请求路由到primary shard所在节点
             if (primary.currentNodeId().equals(state.nodes().getLocalNodeId())) {
+                //主分片在当前节点
                 performLocalAction(state, primary, node, indexMetaData);
             } else {
+                //在其他节点
                 performRemoteAction(state, primary, node);
             }
         }
@@ -954,20 +962,24 @@ public abstract class TransportReplicationAction<
         // we may end up here if the cluster state used to route the primary is so stale that the underlying
         // index shard was replaced with a replica. For example - in a two node cluster, if the primary fails
         // the replica will take over and a replica will be assigned to the first node.
+        //要主分片
         if (indexShard.routingEntry().primary() == false) {
             throw new ReplicationOperation.RetryOnPrimaryException(indexShard.shardId(),
                 "actual shard is not a primary " + indexShard.routingEntry());
         }
+        //allocationId 不相等
         final String actualAllocationId = indexShard.routingEntry().allocationId().getId();
         if (actualAllocationId.equals(allocationId) == false) {
             throw new ShardNotFoundException(shardId, "expected aID [{}] but found [{}]", allocationId, actualAllocationId);
         }
+        //term值不对
         final long actualTerm = indexShard.getPrimaryTerm();
         if (actualTerm != primaryTerm) {
             throw new ShardNotFoundException(shardId, "expected aID [{}] with term [{}] but found [{}]", allocationId,
                 primaryTerm, actualTerm);
         }
 
+        //真正执行的回调
         ActionListener<Releasable> onAcquired = new ActionListener<Releasable>() {
             @Override
             public void onResponse(Releasable releasable) {
@@ -980,6 +992,7 @@ public abstract class TransportReplicationAction<
             }
         };
 
+        //用信号量锁
         indexShard.acquirePrimaryOperationPermit(onAcquired, executor);
     }
 

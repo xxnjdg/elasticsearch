@@ -352,9 +352,11 @@ public class ShardStateAction extends AbstractComponent {
         }
     }
 
+    //SHARD_STATE_ACTION_LISTENER
     public void shardStarted(final ShardRouting shardRouting, final String message, Listener listener) {
         shardStarted(shardRouting, message, listener, clusterService.state());
     }
+    //listener = SHARD_STATE_ACTION_LISTENER
     public void shardStarted(final ShardRouting shardRouting, final String message, Listener listener, ClusterState currentState) {
         ShardEntry shardEntry = new ShardEntry(shardRouting.shardId(), shardRouting.allocationId().getId(), 0L, message, null);
         sendShardAction(SHARD_STARTED_ACTION_NAME, currentState, shardEntry, listener);
@@ -454,8 +456,10 @@ public class ShardStateAction extends AbstractComponent {
     public static class ShardEntry extends TransportRequest {
         ShardId shardId;
         String allocationId;
+        //0
         long primaryTerm;
         String message;
+        //null
         Exception failure;
 
         public ShardEntry() {

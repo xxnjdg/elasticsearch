@@ -143,22 +143,30 @@ public class MetaData implements Iterable<IndexMetaData>, Diffable<MetaData>, To
     private static final NamedDiffableValueSerializer<Custom> CUSTOM_VALUE_SERIALIZER = new NamedDiffableValueSerializer<>(Custom.class);
 
     private final String clusterUUID;
+    //从1开始，不是es版本
     private final long version;
 
     private final Settings transientSettings;
     private final Settings persistentSettings;
     private final Settings settings;
+    //索引数组
     private final ImmutableOpenMap<String, IndexMetaData> indices;
     private final ImmutableOpenMap<String, IndexTemplateMetaData> templates;
     private final ImmutableOpenMap<String, Custom> customs;
 
+    //所有分片数
     private final transient int totalNumberOfShards; // Transient ? not serializable anyway?
+    //所有索引主分片数
     private final int numberOfShards;
 
+    //所有索引名字数组
     private final String[] allIndices;
+    //索引状态是 IndexMetaData.State.OPEN 名字数组
     private final String[] allOpenIndices;
+    //索引状态是 IndexMetaData.State.CLOSE 名字数组
     private final String[] allClosedIndices;
 
+    //索引名字数组
     private final SortedMap<String, AliasOrIndex> aliasAndIndexLookup;
 
     @SuppressWarnings("unchecked")
@@ -749,6 +757,7 @@ public class MetaData implements Iterable<IndexMetaData>, Diffable<MetaData>, To
         public Builder put(IndexMetaData.Builder indexMetaDataBuilder) {
             // we know its a new one, increment the version and store
             indexMetaDataBuilder.version(indexMetaDataBuilder.version() + 1);
+            //构建  IndexMetaData
             IndexMetaData indexMetaData = indexMetaDataBuilder.build();
             indices.put(indexMetaData.getIndex().getName(), indexMetaData);
             return this;

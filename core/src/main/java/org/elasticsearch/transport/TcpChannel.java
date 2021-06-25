@@ -144,6 +144,7 @@ public interface TcpChannel extends Releasable {
 
         for (ActionFuture<Void> connectionFuture : connectionFutures) {
             try {
+                //等待连接，超时时间3s
                 connectionFuture.get(connectTimeout.getMillis(), TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 allConnected = false;

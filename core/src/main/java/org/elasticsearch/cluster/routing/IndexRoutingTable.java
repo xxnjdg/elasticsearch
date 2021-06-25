@@ -68,8 +68,10 @@ public class IndexRoutingTable extends AbstractDiffable<IndexRoutingTable> imple
 
     // note, we assume that when the index routing is created, ShardRoutings are created for all possible number of
     // shards with state set to UNASSIGNED
+    //shards 数组数量等于主分片数，IndexShardRoutingTable 封装了主分片和副分片
     private final ImmutableOpenIntMap<IndexShardRoutingTable> shards;
 
+    //状态是 ShardRoutingState.STARTED 或 ShardRoutingState.RELOCATING 的分片
     private final List<ShardRouting> allActiveShards;
 
     IndexRoutingTable(Index index, ImmutableOpenIntMap<IndexShardRoutingTable> shards) {
@@ -416,6 +418,7 @@ public class IndexRoutingTable extends AbstractDiffable<IndexRoutingTable> imple
                     primaryRecoverySource = LocalShardsRecoverySource.INSTANCE;
                 } else {
                     // a freshly created index with no restriction
+                    //不受限制的新创建索引
                     primaryRecoverySource = StoreRecoverySource.EMPTY_STORE_INSTANCE;
                 }
                 IndexShardRoutingTable.Builder indexShardRoutingBuilder = new IndexShardRoutingTable.Builder(shardId);

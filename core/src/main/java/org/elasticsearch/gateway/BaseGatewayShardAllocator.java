@@ -49,8 +49,10 @@ public abstract class BaseGatewayShardAllocator extends AbstractComponent {
 
     /**
      * Allocate unassigned shards to nodes (if any) where valid copies of the shard already exist.
+     * 将未分配的分片分配给已经存在该分片的有效副本的节点（如果有）。
      * It is up to the individual implementations of {@link #makeAllocationDecision(ShardRouting, RoutingAllocation, Logger)}
      * to make decisions on assigning shards to nodes.
+     * 由{@link #makeAllocationDecision（ShardRouting，RoutingAllocation，Logger）}的各个实现决定是否将分片分配给节点。
      *
      * @param allocation the allocation state container object
      */

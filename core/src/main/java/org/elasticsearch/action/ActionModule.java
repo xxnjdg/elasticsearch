@@ -334,14 +334,22 @@ public class ActionModule extends AbstractModule {
 
     private static final Logger logger = ESLoggerFactory.getLogger(ActionModule.class);
 
+    //false
     private final boolean transportClient;
     private final Settings settings;
+    //clusterModule.getIndexNameExpressionResolver()
     private final IndexNameExpressionResolver indexNameExpressionResolver;
+    //settingsModule.getIndexScopedSettings()
     private final IndexScopedSettings indexScopedSettings;
+    //settingsModule.getClusterSettings()
     private final ClusterSettings clusterSettings;
+    //settingsModule.getSettingsFilter()
     private final SettingsFilter settingsFilter;
+    //pluginsService.filterPlugins(ActionPlugin.class)
     private final List<ActionPlugin> actionPlugins;
+    //actions 列表
     private final Map<String, ActionHandler<?, ?>> actions;
+    //空
     private final ActionFilters actionFilters;
     private final AutoCreateIndex autoCreateIndex;
     private final DestructiveOperations destructiveOperations;
@@ -500,6 +508,7 @@ public class ActionModule extends AbstractModule {
         actions.register(DeletePipelineAction.INSTANCE, DeletePipelineTransportAction.class);
         actions.register(SimulatePipelineAction.INSTANCE, SimulatePipelineTransportAction.class);
 
+        //调用插件 getActions 获取
         actionPlugins.stream().flatMap(p -> p.getActions().stream()).forEach(actions::register);
 
         return unmodifiableMap(actions.getRegistry());

@@ -112,9 +112,12 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
 
     /**
      * Will create types automatically if they do not exists in the mapping definition yet
+     *
+     * dynamic默认true ,即如果不存在 mapping 定义会自动创建 types,
      */
     private final boolean dynamic;
 
+    //"{\"_default_\":{}}"
     private volatile String defaultMappingSource;
 
     private volatile Map<String, DocumentMapper> mappers = emptyMap();
@@ -136,6 +139,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
 
     final MapperRegistry mapperRegistry;
 
+    //queryShardContextSupplier = () -> newQueryShardContext(0, null, System::currentTimeMillis, null)
     public MapperService(IndexSettings indexSettings, IndexAnalyzers indexAnalyzers, NamedXContentRegistry xContentRegistry,
                          SimilarityService similarityService, MapperRegistry mapperRegistry,
                          Supplier<QueryShardContext> queryShardContextSupplier) {
@@ -725,6 +729,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         return field.substring(0, lastDot);
     }
 
+    //mappingType = type名字 null true
     public DocumentMapper parse(String mappingType, CompressedXContent mappingSource, boolean applyDefault) throws MapperParsingException {
         return documentParser.parse(mappingType, mappingSource, applyDefault ? defaultMappingSource : null);
     }
@@ -757,6 +762,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
      * type has been dynamically created.
      */
     public DocumentMapperForType documentMapperWithAutoCreate(String type) {
+        //获取映射
         DocumentMapper mapper = mappers.get(type);
         if (mapper != null) {
             return new DocumentMapperForType(mapper, null);

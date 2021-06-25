@@ -57,6 +57,7 @@ public final class ConnectionProfile {
     }
 
     private final List<ConnectionTypeHandle> handles;
+    //1
     private final int numConnections;
     private final TimeValue connectTimeout;
     private final TimeValue handshakeTimeout;
@@ -193,7 +194,9 @@ public final class ConnectionProfile {
      * Connection type handle encapsulates the logic which connection
      */
     static final class ConnectionTypeHandle {
+        //连接数组数量
         public final int length;
+        //数组偏移
         public final int offset;
         private final Set<TransportRequestOptions.Type> types;
         private final AtomicInteger counter = new AtomicInteger();
@@ -208,6 +211,7 @@ public final class ConnectionProfile {
          * Returns one of the channels out configured for this handle. The channel is selected in a round-robin
          * fashion.
          */
+        //使用轮询方法获取 channel
         <T> T getChannel(List<T> channels) {
             if (length == 0) {
                 throw new IllegalStateException("can't select channel size is 0 for types: " + types);

@@ -44,11 +44,13 @@ public class LocalCheckpointTracker {
     /**
      * The current local checkpoint, i.e., all sequence numbers no more than this number have been completed.
      */
+    //SequenceNumbers.NO_OPS_PERFORMED = -1
     volatile long checkpoint;
 
     /**
      * The next available sequence number.
      */
+    //0
     private volatile long nextSeqNo;
 
     /**

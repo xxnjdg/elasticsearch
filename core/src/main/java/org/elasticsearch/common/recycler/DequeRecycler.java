@@ -28,6 +28,7 @@ import java.util.Deque;
 public class DequeRecycler<T> extends AbstractRecycler<T> {
 
     final Deque<T> deque;
+    //最大页数，一页16k
     final int maxSize;
 
     public DequeRecycler(C<T> c, Deque<T> queue, int maxSize) {
@@ -50,8 +51,10 @@ public class DequeRecycler<T> extends AbstractRecycler<T> {
     public V<T> obtain(int sizing) {
         final T v = deque.pollFirst();
         if (v == null) {
+            //如果队列没有，那么创建数组
             return new DV(c.newInstance(sizing), false);
         }
+        //队列存在数组
         return new DV(v, true);
     }
 
@@ -85,17 +88,21 @@ public class DequeRecycler<T> extends AbstractRecycler<T> {
             return recycled;
         }
 
+        //发送数据成功后被调用
         @Override
         public void close() {
             if (value == null) {
                 throw new IllegalStateException("recycler entry already released...");
             }
             final boolean recycle = beforeRelease();
+            //判断数组是加入队列还是销毁数组
             if (recycle) {
                 c.recycle(value);
+                //加入队列
                 deque.addFirst(value);
             }
             else {
+                //一般等gc清除
                 c.destroy(value);
             }
             value = null;

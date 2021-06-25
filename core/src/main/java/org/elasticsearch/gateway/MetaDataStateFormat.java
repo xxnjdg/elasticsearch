@@ -267,6 +267,7 @@ public abstract class MetaDataStateFormat<T> {
         boolean maxStateIdIsLegacy = true;
         if (dataLocations != null) { // select all eligible files first
             for (Path dataLocation : dataLocations) {
+                //stateDir ${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}/_state
                 final Path stateDir = dataLocation.resolve(STATE_DIR_NAME);
                 // now, iterate over the current versions, and find latest one
                 // we don't check if the stateDir is present since it could be deleted

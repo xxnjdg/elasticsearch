@@ -158,6 +158,7 @@ public class IndicesService extends AbstractLifecycleComponent
     private final BigArrays bigArrays;
     private final ScriptService scriptService;
     private final Client client;
+    //索引数组
     private volatile Map<String, IndexService> indices = emptyMap();
     private final Map<Index, List<PendingDelete>> pendingDeletes = new HashMap<>();
     private final AtomicInteger numUncompletedDeletes = new AtomicInteger();
@@ -423,6 +424,8 @@ public class IndicesService extends AbstractLifecycleComponent
 
     /**
      * This creates a new IndexService without registering it
+     * 这将创建一个新的IndexService而不进行注册
+     * "create index" indexMetaData, indicesQueryCache, indicesFieldDataCache, finalListeners, indexingMemoryController
      */
     private synchronized IndexService createIndexService(final String reason,
                                                          IndexMetaData indexMetaData,
@@ -430,6 +433,7 @@ public class IndicesService extends AbstractLifecycleComponent
                                                          IndicesFieldDataCache indicesFieldDataCache,
                                                          List<IndexEventListener> builtInListeners,
                                                          IndexingOperationListener... indexingOperationListeners) throws IOException {
+        //创建  IndexSettings
         final IndexSettings idxSettings = new IndexSettings(indexMetaData, this.settings, indexScopeSetting);
         logger.debug("creating Index [{}], shards [{}]/[{}] - reason [{}]",
             indexMetaData.getIndex(),
@@ -500,13 +504,16 @@ public class IndicesService extends AbstractLifecycleComponent
         }
     }
 
+    //创建分片
     @Override
     public IndexShard createShard(ShardRouting shardRouting, RecoveryState recoveryState, PeerRecoveryTargetService recoveryTargetService,
                                   PeerRecoveryTargetService.RecoveryListener recoveryListener, RepositoriesService repositoriesService,
                                   Consumer<IndexShard.ShardFailure> onShardFailure,
                                   Consumer<ShardId> globalCheckpointSyncer) throws IOException {
         ensureChangesAllowed();
+        //获取 IndexService
         IndexService indexService = indexService(shardRouting.index());
+        //创建 IndexShard
         IndexShard indexShard = indexService.createShard(shardRouting, globalCheckpointSyncer);
         indexShard.addShardFailureCallback(onShardFailure);
         indexShard.startRecovery(recoveryState, recoveryTargetService, recoveryListener, repositoriesService,

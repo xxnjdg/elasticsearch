@@ -92,6 +92,7 @@ public class MembershipAction extends AbstractComponent {
             EmptyTransportResponseHandler.INSTANCE_SAME).txGet(timeout.millis(), TimeUnit.MILLISECONDS);
     }
 
+    //node = 本地节点  masterNode = 主节点
     public void sendJoinRequestBlocking(DiscoveryNode masterNode, DiscoveryNode node, TimeValue timeout) {
         transportService.submitRequest(masterNode, DISCOVERY_JOIN_ACTION_NAME, new JoinRequest(node),
             EmptyTransportResponseHandler.INSTANCE_SAME).txGet(timeout.millis(), TimeUnit.MILLISECONDS);
@@ -134,6 +135,7 @@ public class MembershipAction extends AbstractComponent {
 
         @Override
         public void messageReceived(final JoinRequest request, final TransportChannel channel) throws Exception {
+            //处理节点加入集群请求
             listener.onJoin(request.node, new JoinCallback() {
                 @Override
                 public void onSuccess() {

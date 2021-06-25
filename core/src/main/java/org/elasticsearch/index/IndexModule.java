@@ -106,11 +106,14 @@ public final class IndexModule {
     // pkg private so tests can mock
     final SetOnce<EngineFactory> engineFactory = new SetOnce<>();
     private SetOnce<IndexSearcherWrapperFactory> indexSearcherWrapper = new SetOnce<>();
+    //finalListeners.add(onStoreClose);finalListeners.add(oldShardsStats);org.elasticsearch.indices.cluster.IndicesClusterStateService.buildInIndexListener
     private final Set<IndexEventListener> indexEventListeners = new HashSet<>();
     private final Map<String, SimilarityProvider.Factory> similarities = new HashMap<>();
     private final Map<String, Function<IndexSettings, IndexStore>> storeTypes = new HashMap<>();
     private final SetOnce<BiFunction<IndexSettings, IndicesQueryCache, QueryCache>> forceQueryCacheProvider = new SetOnce<>();
+    //new SearchSlowLog(indexSettings)
     private final List<SearchOperationListener> searchOperationListeners = new ArrayList<>();
+    //new IndexingSlowLog(indexSettings) IndexingMemoryController
     private final List<IndexingOperationListener> indexOperationListeners = new ArrayList<>();
     private final AtomicBoolean frozen = new AtomicBoolean(false);
 
@@ -313,6 +316,9 @@ public final class IndexModule {
         IndexSearcherWrapper newWrapper(IndexService indexService);
     }
 
+    //创建 IndexService
+    //nodeEnv xContentRegistry this circuitBreakerService bigArrays threadPool scriptService
+    // client indicesQueryCache indicesModule.getMapperRegistry() indicesFieldDataCache namedWriteableRegistry
     public IndexService newIndexService(
             NodeEnvironment environment,
             NamedXContentRegistry xContentRegistry,
@@ -334,6 +340,7 @@ public final class IndexModule {
         final String storeType = indexSettings.getValue(INDEX_STORE_TYPE_SETTING);
         final IndexStore store;
         if (Strings.isEmpty(storeType) || isBuiltinType(storeType)) {
+            //默认情况
             store = new IndexStore(indexSettings);
         } else {
             Function<IndexSettings, IndexStore> factory = storeTypes.get(storeType);
@@ -349,6 +356,7 @@ public final class IndexModule {
         if (indexSettings.getValue(INDEX_QUERY_CACHE_ENABLED_SETTING)) {
             BiFunction<IndexSettings, IndicesQueryCache, QueryCache> queryCacheProvider = forceQueryCacheProvider.get();
             if (queryCacheProvider == null) {
+                //默认情况
                 queryCache = new IndexQueryCache(indexSettings, indicesQueryCache);
             } else {
                 queryCache = queryCacheProvider.apply(indexSettings, indicesQueryCache);

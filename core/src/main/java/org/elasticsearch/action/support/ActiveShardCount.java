@@ -180,12 +180,14 @@ public final class ActiveShardCount implements Writeable {
      * to meet the required shard count represented by this instance.
      */
     public boolean enoughShardsActive(final IndexShardRoutingTable shardRoutingTable) {
+        //STARTED 状态的分片数
         final int activeShardCount = shardRoutingTable.activeShards().size();
         if (this == ActiveShardCount.ALL) {
             // adding 1 for the primary in addition to the total number of replicas,
             // which gives us the total number of shard copies
             return activeShardCount == shardRoutingTable.replicaShards().size() + 1;
         } else if (this == ActiveShardCount.DEFAULT) {
+            //默认有1个即可
             return activeShardCount >= 1;
         } else {
             return activeShardCount >= value;

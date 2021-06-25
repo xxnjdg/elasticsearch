@@ -99,13 +99,16 @@ public abstract class Engine implements Closeable {
     public static final String SYNC_COMMIT_ID = "sync_id";
     public static final String HISTORY_UUID_KEY = "history_uuid";
 
+    //分片id
     protected final ShardId shardId;
+    //allocationId,一个分片唯一
     protected final String allocationId;
     protected final Logger logger;
     protected final EngineConfig engineConfig;
     protected final Store store;
     protected final AtomicBoolean isClosed = new AtomicBoolean(false);
     private final CountDownLatch closedLatch = new CountDownLatch(1);
+    //new ShardEventListener()
     protected final EventListener eventListener;
     protected final ReentrantLock failEngineLock = new ReentrantLock();
     protected final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
@@ -1459,6 +1462,7 @@ public abstract class Engine implements Closeable {
         private final IndexCommit indexCommit;
 
         IndexCommitRef(SnapshotDeletionPolicy deletionPolicy) throws IOException {
+            //获取最新一次提交
             indexCommit = deletionPolicy.snapshot();
             onClose = () -> deletionPolicy.release(indexCommit);
         }

@@ -84,8 +84,10 @@ final class StoreRecovery {
      * has been ignored due to a concurrent modification of if the clusters state has changed due to async updates.
      * @see Store
      */
+    //从 store 恢复数据
     boolean recoverFromStore(final IndexShard indexShard) {
         if (canRecover(indexShard)) {
+            //EMPTY_STORE
             RecoverySource.Type recoveryType = indexShard.recoveryState().getRecoverySource().getType();
             assert recoveryType == RecoverySource.Type.EMPTY_STORE || recoveryType == RecoverySource.Type.EXISTING_STORE :
                 "expected store recovery type but was: " + recoveryType;
@@ -349,6 +351,7 @@ final class StoreRecovery {
      */
     private void internalRecoverFromStore(IndexShard indexShard) throws IndexShardRecoveryException {
         final RecoveryState recoveryState = indexShard.recoveryState();
+        //false
         final boolean indexShouldExists = recoveryState.getRecoverySource().getType() != RecoverySource.Type.EMPTY_STORE;
         indexShard.prepareForIndexRecovery();
         long version = -1;
@@ -359,6 +362,7 @@ final class StoreRecovery {
             try {
                 store.failIfCorrupted();
                 try {
+                    //读取 SegmentInfos,如果文件不存在，si = null
                     si = store.readLastCommittedSegmentsInfo();
                 } catch (Exception e) {
                     String files = "_unknown_";
@@ -386,6 +390,7 @@ final class StoreRecovery {
             } catch (Exception e) {
                 throw new IndexShardRecoveryException(shardId, "failed to fetch index version after copying it over", e);
             }
+            //本阶段从Lucene读取最后一次提交的分段信息， 获取其中的版本号， 更新当前索引版本
             recoveryState.getIndex().updateVersion(version);
             if (recoveryState.getRecoverySource().getType() == RecoverySource.Type.LOCAL_SHARDS) {
                 assert indexShouldExists;

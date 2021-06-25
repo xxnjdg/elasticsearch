@@ -86,14 +86,17 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
     private final Iterable<ClusterStateApplier> clusterStateAppliers = Iterables.concat(highPriorityStateAppliers,
         normalPriorityStateAppliers, lowPriorityStateAppliers);
 
+    //addListener(localNodeMasterListeners);
     private final Collection<ClusterStateListener> clusterStateListeners = new CopyOnWriteArrayList<>();
     private final Collection<TimeoutClusterStateListener> timeoutClusterStateListeners =
         Collections.newSetFromMap(new ConcurrentHashMap<TimeoutClusterStateListener, Boolean>());
 
+    //new LocalNodeMasterListeners(threadPool)
     private final LocalNodeMasterListeners localNodeMasterListeners;
 
     private final Queue<NotifyTimeout> onGoingTimeouts = ConcurrentCollections.newQueue();
 
+    //集群状态
     private final AtomicReference<ClusterState> state; // last applied state
 
     private NodeConnectionsService nodeConnectionsService;
@@ -137,6 +140,7 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
             daemonThreadFactory(settings, CLUSTER_UPDATE_THREAD_NAME), threadPool.getThreadContext(), threadPool.scheduler());
     }
 
+    //执行集群状态任务
     class UpdateTask extends SourcePrioritizedRunnable implements Function<ClusterState, ClusterState> {
         final ClusterStateTaskListener listener;
         final Function<ClusterState, ClusterState> updateFunction;
@@ -339,6 +343,7 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
                     () -> threadPool.generic().execute(
                         () -> listener.onFailure(source, new ProcessClusterEventTimeoutException(config.timeout(), source))));
             } else {
+                //发送给线程池执行
                 threadPoolExecutor.execute(updateTask);
             }
         } catch (EsRejectedExecutionException e) {
@@ -382,6 +387,7 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
         return true;
     }
 
+    //运行任务
     protected void runTask(UpdateTask task) {
         if (!lifecycle.started()) {
             logger.debug("processing [{}]: ignoring, cluster applier service not started", task.source);
@@ -389,11 +395,13 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
         }
 
         logger.debug("processing [{}]: execute", task.source);
+        //获取当前集群状态
         final ClusterState previousClusterState = state.get();
 
         long startTimeNS = currentTimeInNanos();
         final ClusterState newClusterState;
         try {
+            //获取新的集群状态
             newClusterState = task.apply(previousClusterState);
         } catch (Exception e) {
             TimeValue executionTime = TimeValue.timeValueMillis(Math.max(0, TimeValue.nsecToMSec(currentTimeInNanos() - startTimeNS)));
@@ -420,6 +428,7 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
             logger.debug("processing [{}]: took [{}] no change in cluster state", task.source, executionTime);
             warnAboutSlowTaskIfNeeded(executionTime, task.source);
         } else {
+            //状态更新了
             if (logger.isTraceEnabled()) {
                 logger.trace("cluster state updated, source [{}]\n{}", task.source, newClusterState);
             } else if (logger.isDebugEnabled()) {
@@ -451,6 +460,7 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
         }
     }
 
+    //应用改变
     private void applyChanges(UpdateTask task, ClusterState previousClusterState, ClusterState newClusterState) {
         ClusterChangedEvent clusterChangedEvent = new ClusterChangedEvent(task.source, newClusterState, previousClusterState);
         // new cluster state, notify all listeners
@@ -481,10 +491,12 @@ public class ClusterApplierService extends AbstractLifecycleComponent implements
         nodeConnectionsService.disconnectFromNodesExcept(newClusterState.nodes());
 
         logger.debug("set locally applied cluster state to version {}", newClusterState.version());
+        //设置 state
         state.set(newClusterState);
 
         callClusterStateListeners(clusterChangedEvent);
 
+        //调用回调响应
         task.listener.clusterStateProcessed(task.source, previousClusterState, newClusterState);
     }
 

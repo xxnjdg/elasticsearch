@@ -44,6 +44,7 @@ public class ReleasableBytesStreamOutput extends BytesStreamOutput
     }
 
     public ReleasableBytesStreamOutput(int expectedSize, BigArrays bigArrays) {
+        //默认分配一页16kB字节数组
         super(expectedSize, bigArrays);
         this.releasable = Releasables.releaseOnce(this.bytes);
     }
@@ -58,6 +59,7 @@ public class ReleasableBytesStreamOutput extends BytesStreamOutput
         return new ReleasablePagedBytesReference(bigArrays, bytes, count, releasable);
     }
 
+    //发送数据成功后被调用
     @Override
     public void close() {
         Releasables.close(releasable);

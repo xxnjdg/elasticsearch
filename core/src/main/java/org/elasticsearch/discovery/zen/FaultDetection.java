@@ -60,6 +60,7 @@ public abstract class FaultDetection extends AbstractComponent implements Closea
     protected final FDConnectionListener connectionListener;
     protected final boolean connectOnNetworkDisconnect;
 
+    //1秒
     protected final TimeValue pingInterval;
     protected final TimeValue pingRetryTimeout;
     protected final int pingRetryCount;

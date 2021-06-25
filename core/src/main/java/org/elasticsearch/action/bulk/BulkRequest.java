@@ -87,6 +87,7 @@ public class BulkRequest extends ActionRequest implements CompositeIndicesReques
      * {@link WriteRequest}s to this but java doesn't support syntax to declare that everything in the array has both types so we declare
      * the one with the least casts.
      */
+    //存放请求列表
     final List<DocWriteRequest> requests = new ArrayList<>();
     private final Set<String> indices = new HashSet<>();
     List<Object> payloads = null;

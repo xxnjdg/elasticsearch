@@ -227,6 +227,7 @@ public class TransportShardBulkAction extends TransportWriteAction<BulkShardRequ
                                                     int requestIndex, UpdateHelper updateHelper,
                                                     LongSupplier nowInMillisSupplier,
                                                     final MappingUpdatePerformer mappingUpdater) throws Exception {
+        //IndexRequest
         final DocWriteRequest itemRequest = request.items()[requestIndex].request();
         final DocWriteRequest.OpType opType = itemRequest.opType();
         final BulkItemResultHolder responseHolder;

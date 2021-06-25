@@ -31,6 +31,7 @@ import org.elasticsearch.common.unit.TimeValue;
  */
 public abstract class AckedClusterStateUpdateTask<Response> extends ClusterStateUpdateTask implements AckedClusterStateTaskListener {
 
+    //2
     private final ActionListener<Response> listener;
     private final AckedRequest request;
 

@@ -227,6 +227,7 @@ final class IndexShardOperationPermits implements Closeable {
                     }
                     return;
                 } else {
+                    //信号量
                     releasable = acquire();
                 }
             }

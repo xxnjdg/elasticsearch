@@ -92,6 +92,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
         }
     }
 
+    //构造 ObjectMapper
     public static class Builder<T extends Builder, Y extends ObjectMapper> extends Mapper.Builder<T, Y> {
 
         protected boolean enabled = Defaults.ENABLED;
@@ -300,19 +301,27 @@ public class ObjectMapper extends Mapper implements Cloneable {
 
     }
 
+    //type 名字
     private final String fullPath;
 
+    //true
     private final boolean enabled;
 
+    //Nested.NO
     private final Nested nested;
 
+    //"__" + fullPath
     private final String nestedTypePathAsString;
+    //new BytesRef(nestedTypePathAsString)
     private final BytesRef nestedTypePathAsBytes;
 
+    //new TermQuery(new Term(TypeFieldMapper.NAME, nestedTypePathAsBytes))
     private final Query nestedTypeFilter;
 
+    //null
     private volatile Dynamic dynamic;
 
+    //false
     private Boolean includeInAll;
 
     private volatile CopyOnWriteHashMap<String, Mapper> mappers;
@@ -509,6 +518,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
     }
 
     public void toXContent(XContentBuilder builder, Params params, ToXContent custom) throws IOException {
+        //写入索引名
         builder.startObject(simpleName());
         if (nested.isNested()) {
             builder.field("type", NESTED_CONTENT_TYPE);

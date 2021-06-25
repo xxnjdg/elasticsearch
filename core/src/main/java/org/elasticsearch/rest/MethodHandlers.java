@@ -29,7 +29,9 @@ import java.util.Set;
  */
 final class MethodHandlers {
 
+    //uri
     private final String path;
+    //key = http请求方法 value = 对应处理器
     private final Map<RestRequest.Method, RestHandler> methodHandlers;
 
     MethodHandlers(String path, RestHandler handler, RestRequest.Method... methods) {

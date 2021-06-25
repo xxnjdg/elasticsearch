@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class BlockingClusterStatePublishResponseHandler {
 
     private final CountDownLatch latch;
+    //等待要发送的节点列表
     private final Set<DiscoveryNode> pendingNodes;
 
     /**

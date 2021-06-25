@@ -55,8 +55,11 @@ public abstract class RestRequest implements ToXContent.Params {
     private static final Pattern TCHAR_PATTERN = Pattern.compile("[a-zA-z0-9!#$%&'*+\\-.\\^_`|~]+");
 
     private final NamedXContentRegistry xContentRegistry;
+    //uri ? 后面的参数
     private final Map<String, String> params;
+    //请求头
     private final Map<String, List<String>> headers;
+    // uri
     private final String rawPath;
     private final Set<String> consumedParams = new HashSet<>();
     private final SetOnce<XContentType> xContentType = new SetOnce<>();

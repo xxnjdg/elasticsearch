@@ -38,12 +38,19 @@ import java.nio.file.Path;
 
 final class Checkpoint {
 
+    //0 translog-1.tlog文件写入偏移
     final long offset;
+    //0
     final int numOps;
+    //1
     final long generation;
+    //SequenceNumbers.NO_OPS_PERFORMED
     final long minSeqNo;
+    //SequenceNumbers.NO_OPS_PERFORMED
     final long maxSeqNo;
+    //UNASSIGNED_SEQ_NO
     final long globalCheckpoint;
+    //1
     final long minTranslogGeneration;
 
     private static final int INITIAL_VERSION = 1; // start with 1, just to recognize there was some magic serialization logic before
@@ -154,6 +161,7 @@ final class Checkpoint {
         }
     }
 
+    //StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW
     public static void write(ChannelFactory factory, Path checkpointFile, Checkpoint checkpoint, OpenOption... options) throws IOException {
         final ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream(FILE_SIZE) {
             @Override
@@ -166,6 +174,7 @@ final class Checkpoint {
         try (OutputStreamIndexOutput indexOutput =
                  new OutputStreamIndexOutput(resourceDesc, checkpointFile.toString(), byteOutputStream, FILE_SIZE)) {
             CodecUtil.writeHeader(indexOutput, CHECKPOINT_CODEC, CURRENT_VERSION);
+            //写入元数据到 byteOutputStream
             checkpoint.write(indexOutput);
             CodecUtil.writeFooter(indexOutput);
 
@@ -177,9 +186,11 @@ final class Checkpoint {
         }
         // now go and write to the channel, in one go.
         try (FileChannel channel = factory.open(checkpointFile, options)) {
+            //把数据写入文件
             Channels.writeToChannel(byteOutputStream.toByteArray(), channel);
             // no need to force metadata, file size stays the same and we did the full fsync
             // when we first created the file, so the directory entry doesn't change as well
+            //flush
             channel.force(false);
         }
     }

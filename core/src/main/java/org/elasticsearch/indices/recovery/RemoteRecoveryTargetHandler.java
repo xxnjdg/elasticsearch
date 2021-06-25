@@ -51,6 +51,7 @@ public class RemoteRecoveryTargetHandler implements RecoveryTargetHandler {
 
     private final AtomicLong bytesSinceLastPause = new AtomicLong();
 
+    //throttleTime -> shard.recoveryStats().addThrottleTime(throttleTime)
     private final Consumer<Long> onSourceThrottle;
 
     public RemoteRecoveryTargetHandler(long recoveryId, ShardId shardId, TransportService transportService,

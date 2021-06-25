@@ -102,6 +102,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final NodeEnvironment nodeEnv;
     private final ShardStoreDeleter shardStoreDeleter;
     private final IndexStore indexStore;
+    //null
     private final IndexSearcherWrapper searcherWrapper;
     private final IndexCache indexCache;
     private final MapperService mapperService;
@@ -110,11 +111,14 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final SimilarityService similarityService;
     private final EngineFactory engineFactory;
     private final IndexWarmer warmer;
+    //分片id 分片
     private volatile Map<Integer, IndexShard> shards = emptyMap();
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean deleted = new AtomicBoolean(false);
     private final IndexSettings indexSettings;
+    ////new SearchSlowLog(indexSettings)
     private final List<SearchOperationListener> searchOperationListeners;
+    ////new IndexingSlowLog(indexSettings) IndexingMemoryController
     private final List<IndexingOperationListener> indexingOperationListeners;
     private volatile AsyncRefreshTask refreshTask;
     private volatile AsyncTranslogFSync fsyncTask;
@@ -128,8 +132,14 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final BigArrays bigArrays;
     private final ScriptService scriptService;
     private final Client client;
+    //() -> null
     private Supplier<Sort> indexSortSupplier;
 
+    //indexSettings, environment, xContentRegistry,
+    //                new SimilarityService(indexSettings, scriptService, similarities),
+    //                shardStoreDeleter, analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService,
+    //                client, queryCache, store, eventListener, searcherWrapperFactory = (shard) -> null,  mapperRegistry = indicesModule.getMapperRegistry(),
+    //                indicesFieldDataCache, searchOperationListeners, indexOperationListeners, namedWriteableRegistry
     public IndexService(
             IndexSettings indexSettings,
             NodeEnvironment nodeEnv,
@@ -308,6 +318,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         }
     }
 
+    //创建分片
     public synchronized IndexShard createShard(ShardRouting routing, Consumer<ShardId> globalCheckpointSyncer) throws IOException {
         /*
          * TODO: we execute this in parallel but it's a synced method. Yet, we might
@@ -324,6 +335,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         IndexShard indexShard = null;
         ShardLock lock = null;
         try {
+            //加锁
             lock = nodeEnv.shardLock(shardId, TimeUnit.SECONDS.toMillis(5));
             eventListener.beforeIndexShardCreated(shardId, indexSettings);
             ShardPath path;
@@ -340,6 +352,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             }
 
+            //${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}/_state 文件不存在
             if (path == null) {
                 // TODO: we should, instead, hold a "bytes reserved" of how large we anticipate this shard will be, e.g. for a shard
                 // that's being relocated/replicated we know how large it will become once it's done copying:
@@ -353,6 +366,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                     }
                     dataPathToShardCount.put(dataPath, curCount + 1);
                 }
+                //创建 ShardPath
                 path = ShardPath.selectNewPathForShard(nodeEnv, shardId, this.indexSettings,
                     routing.getExpectedShardSize() == ShardRouting.UNAVAILABLE_EXPECTED_SHARD_SIZE
                         ? getAvgShardSizeInBytes() : routing.getExpectedShardSize(),
@@ -374,8 +388,10 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                     warmer.warm(searcher, shard, IndexService.this.indexSettings);
                 }
             };
+            //创建，封装了索引文件目录
             store = new Store(shardId, this.indexSettings, indexStore.newDirectoryService(path), lock,
                     new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId)));
+            //开始创建 IndexShard
             indexShard = new IndexShard(routing, this.indexSettings, path, store, indexSortSupplier,
                 indexCache, mapperService, similarityService, engineFactory,
                 eventListener, searcherWrapper, threadPool, bigArrays, engineWarmer,
@@ -397,6 +413,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         }
     }
 
+    //移除分片
     @Override
     public synchronized void removeShard(int shardId, String reason) {
         final ShardId sId = new ShardId(index(), shardId);
@@ -686,6 +703,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         }
     }
 
+    //1分钟循环执行
     private void maybeRefreshEngine() {
         if (indexSettings.getRefreshInterval().millis() > 0) {
             for (IndexShard shard : this.shards.values()) {
@@ -702,6 +720,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         }
     }
 
+    //10分钟循环执行
     private void maybeTrimTranslog() {
         for (IndexShard shard : this.shards.values()) {
             switch (shard.state()) {
@@ -724,6 +743,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         }
     }
 
+    //30分钟循环执行一次
     private void maybeSyncGlobalCheckpoints() {
         for (final IndexShard shard : this.shards.values()) {
             if (shard.routingEntry().active() && shard.routingEntry().primary()) {
@@ -769,6 +789,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     abstract static class BaseAsyncTask implements Runnable, Closeable {
         protected final IndexService indexService;
         protected final ThreadPool threadPool;
+        //时间
         private final TimeValue interval;
         private ScheduledFuture<?> scheduledFuture;
         private final AtomicBoolean closed = new AtomicBoolean(false);

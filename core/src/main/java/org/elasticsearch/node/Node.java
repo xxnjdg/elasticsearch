@@ -640,6 +640,7 @@ public class Node implements Closeable {
         assert clusterService.localNode().equals(localNodeFactory.getNode())
             : "clusterService has a different local node than the factory provided";
         transportService.acceptIncomingRequests();
+        //开始主节点选举
         discovery.startInitialJoin();
         // tribe nodes don't have a master so we shouldn't register an observer         s
         final TimeValue initialStateTimeout = DiscoverySettings.INITIAL_STATE_TIMEOUT_SETTING.get(settings);
@@ -650,6 +651,7 @@ public class Node implements Closeable {
             if (clusterState.nodes().getMasterNodeId() == null) {
                 logger.debug("waiting to join the cluster. timeout [{}]", initialStateTimeout);
                 final CountDownLatch latch = new CountDownLatch(1);
+                //等待主节点选举出来
                 observer.waitForNextChange(new ClusterStateObserver.Listener() {
                     @Override
                     public void onNewClusterState(ClusterState state) { latch.countDown(); }
@@ -677,6 +679,7 @@ public class Node implements Closeable {
 
 
         if (NetworkModule.HTTP_ENABLED.get(settings)) {
+            //打开 9200 等待客户端请求
             injector.getInstance(HttpServerTransport.class).start();
         }
 

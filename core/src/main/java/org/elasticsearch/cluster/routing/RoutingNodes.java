@@ -65,21 +65,28 @@ import java.util.function.Predicate;
  */
 public class RoutingNodes implements Iterable<RoutingNode> {
 
+    //key = nodeId
     private final Map<String, RoutingNode> nodesToShards = new HashMap<>();
 
+    //未分配的分片，包括主副分片
     private final UnassignedShards unassignedShards = new UnassignedShards(this);
 
+    //分配的分片，包括主副分片
     private final Map<ShardId, List<ShardRouting>> assignedShards = new HashMap<>();
 
+    //是否自读
     private final boolean readOnly;
 
+    //主分片数
     private int inactivePrimaryCount = 0;
 
+    //总分片数,包括主副分片数
     private int inactiveShardCount = 0;
 
     private int relocatingShards = 0;
 
     private final Map<String, ObjectIntHashMap<String>> nodesPerAttributeNames = new HashMap<>();
+    //key = nodeId
     private final Map<String, Recoveries> recoveriesPerNode = new HashMap<>();
 
     public RoutingNodes(ClusterState clusterState) {
@@ -88,6 +95,7 @@ public class RoutingNodes implements Iterable<RoutingNode> {
 
     public RoutingNodes(ClusterState clusterState, boolean readOnly) {
         this.readOnly = readOnly;
+        //获取路由表
         final RoutingTable routingTable = clusterState.routingTable();
 
         Map<String, LinkedHashMap<ShardId, ShardRouting>> nodesToShards = new HashMap<>();
@@ -101,11 +109,13 @@ public class RoutingNodes implements Iterable<RoutingNode> {
         for (ObjectCursor<IndexRoutingTable> indexRoutingTable : routingTable.indicesRouting().values()) {
             for (IndexShardRoutingTable indexShard : indexRoutingTable.value) {
                 assert indexShard.primary != null;
+                //遍历主副分片
                 for (ShardRouting shard : indexShard) {
                     // to get all the shards belonging to an index, including the replicas,
                     // we define a replica set and keep track of it. A replica set is identified
                     // by the ShardId, as this is common for primary and replicas.
                     // A replica Set might have one (and not more) replicas with the state of RELOCATING.
+                    //是否分配了分片
                     if (shard.assignedToNode()) {
                         Map<ShardId, ShardRouting> entries = nodesToShards.computeIfAbsent(shard.currentNodeId(),
                             k -> new LinkedHashMap<>()); // LinkedHashMap to preserve order
@@ -424,13 +434,16 @@ public class RoutingNodes implements Iterable<RoutingNode> {
                                         long expectedSize, RoutingChangesObserver routingChangesObserver) {
         ensureMutable();
         assert unassignedShard.unassigned() : "expected an unassigned shard " + unassignedShard;
+        //更改状态
         ShardRouting initializedShard = unassignedShard.initialize(nodeId, existingAllocationId, expectedSize);
+        //加入节点分片数组中
         node(nodeId).add(initializedShard);
         inactiveShardCount++;
         if (initializedShard.primary()) {
             inactivePrimaryCount++;
         }
         addRecovery(initializedShard);
+        //加入分配数组
         assignedShardsAdd(initializedShard);
         routingChangesObserver.shardInitialized(unassignedShard, initializedShard);
         return initializedShard;
@@ -468,6 +481,7 @@ public class RoutingNodes implements Iterable<RoutingNode> {
      */
     public ShardRouting startShard(Logger logger, ShardRouting initializingShard, RoutingChangesObserver routingChangesObserver) {
         ensureMutable();
+        //获取到新的 ShardRouting
         ShardRouting startedShard = started(initializingShard);
         logger.trace("{} marked shard as started (routing: {})", initializingShard.shardId(), initializingShard);
         routingChangesObserver.shardStarted(initializingShard, startedShard);
@@ -640,6 +654,7 @@ public class RoutingNodes implements Iterable<RoutingNode> {
      *
      * @return the started shard
      */
+    //返回状态为 started 的分片
     private ShardRouting started(ShardRouting shard) {
         assert shard.initializing() : "expected an initializing shard " + shard;
         if (shard.relocatingNodeId() == null) {
@@ -650,6 +665,7 @@ public class RoutingNodes implements Iterable<RoutingNode> {
             }
         }
         removeRecovery(shard);
+        //分片状态 -》 ShardRoutingState.STARTED
         ShardRouting startedShard = shard.moveToStarted();
         updateAssigned(shard, startedShard);
         return startedShard;
@@ -764,7 +780,9 @@ public class RoutingNodes implements Iterable<RoutingNode> {
             "only assigned shards can be updated in list of assigned shards (prev: " + oldShard + ", new: " + newShard + ")";
         assert oldShard.currentNodeId().equals(newShard.currentNodeId()) : "shard to update " + oldShard +
             " can only update " + oldShard + " by shard assigned to same node but was " + newShard;
+        //更新节点分配到的newShard分片
         node(oldShard.currentNodeId()).update(oldShard, newShard);
+        //更新assignedShards分配到新分片newShard
         List<ShardRouting> shardsWithMatchingShardId = assignedShards.computeIfAbsent(oldShard.shardId(), k -> new ArrayList<>());
         int previousShardIndex = shardsWithMatchingShardId.indexOf(oldShard);
         assert previousShardIndex >= 0 : "shard to update " + oldShard + " does not exist in list of assigned shards";
@@ -802,9 +820,12 @@ public class RoutingNodes implements Iterable<RoutingNode> {
     public static final class UnassignedShards implements Iterable<ShardRouting>  {
 
         private final RoutingNodes nodes;
+        //所有分片数量
         private final List<ShardRouting> unassigned;
+        //忽略的数组
         private final List<ShardRouting> ignored;
 
+        //主分片数量
         private int primaries = 0;
         private int ignoredPrimaries = 0;
 
@@ -1162,6 +1183,7 @@ public class RoutingNodes implements Iterable<RoutingNode> {
 
     private static final class Recoveries {
         private static final Recoveries EMPTY = new Recoveries();
+        //节点加入 ShardRoutingState.INITIALIZING 分片数量
         private int incoming = 0;
         private int outgoing = 0;
 

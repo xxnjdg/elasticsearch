@@ -98,6 +98,8 @@ public class RecoveryState implements ToXContentFragment, Streamable {
         }
     }
 
+    //RecoveryState.Stage.INDEX RecoveryState.Stage.VERIFY_INDEX
+    //RecoveryState.Stage.TRANSLOG RecoveryState.Stage.FINALIZE RecoveryState.Stage.DONE
     private Stage stage;
 
     private final Index index = new Index();
@@ -107,6 +109,7 @@ public class RecoveryState implements ToXContentFragment, Streamable {
 
     private RecoverySource recoverySource;
     private ShardId shardId;
+    //null
     @Nullable
     private DiscoveryNode sourceNode;
     private DiscoveryNode targetNode;
@@ -453,7 +456,9 @@ public class RecoveryState implements ToXContentFragment, Streamable {
         public static final int UNKNOWN = -1;
 
         private int recovered;
+        //0
         private int total = UNKNOWN;
+        //0
         private int totalOnStart = UNKNOWN;
 
         public synchronized void reset() {
@@ -554,8 +559,11 @@ public class RecoveryState implements ToXContentFragment, Streamable {
     }
 
     public static class File implements ToXContentObject, Streamable {
+        //文件名字
         private String name;
+        //文件一共长度
         private long length;
+        //恢复的字节长度
         private long recovered;
         private boolean reused;
 
@@ -666,11 +674,13 @@ public class RecoveryState implements ToXContentFragment, Streamable {
 
     public static class Index extends Timer implements ToXContentFragment, Streamable {
 
+        //key = 文件名 value = new File(文件名 = name, 文件名长度 = length, reused = false)
         private Map<String, File> fileDetails = new HashMap<>();
 
         public static final long UNKNOWN = -1L;
 
         private long version = UNKNOWN;
+        //0
         private long sourceThrottlingInNanos = UNKNOWN;
         private long targetThrottleTimeInNanos = UNKNOWN;
 

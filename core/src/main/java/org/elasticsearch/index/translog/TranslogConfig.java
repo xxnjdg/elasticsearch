@@ -38,7 +38,9 @@ public final class TranslogConfig {
     private final BigArrays bigArrays;
     private final IndexSettings indexSettings;
     private final ShardId shardId;
+    //${data.paths}/nodes/{node.id}/indices/{index.uuid}/{shard.id}/translog
     private final Path translogPath;
+    //DEFAULT_BUFFER_SIZE
     private final ByteSizeValue bufferSize;
 
     /**

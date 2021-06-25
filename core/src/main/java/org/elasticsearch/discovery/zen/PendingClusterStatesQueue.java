@@ -57,6 +57,7 @@ public class PendingClusterStatesQueue {
         void onNewClusterStateFailed(Exception e);
     }
 
+    //存放待处理的集群状态，处理完会移除
     final ArrayList<ClusterStateContext> pendingStates = new ArrayList<>();
     final Logger logger;
     final int maxQueueSize;
@@ -84,6 +85,7 @@ public class PendingClusterStatesQueue {
      * When the cluster state is processed (or failed), the supplied listener will be called
      **/
     public synchronized ClusterState markAsCommitted(String stateUUID, StateProcessedListener listener) {
+        //找出 ClusterStateContext
         final ClusterStateContext context = findState(stateUUID);
         if (context == null) {
             listener.onNewClusterStateFailed(new IllegalStateException("can't resolve cluster state with uuid" +
@@ -95,6 +97,7 @@ public class PendingClusterStatesQueue {
                 " [" + stateUUID + "] is already committed"));
             return null;
         }
+        //设置
         context.markAsCommitted(listener);
         return context.state;
     }
@@ -260,6 +263,7 @@ public class PendingClusterStatesQueue {
 
     static class ClusterStateContext {
         final ClusterState state;
+        //响应
         StateProcessedListener listener;
 
         ClusterStateContext(ClusterState clusterState) {

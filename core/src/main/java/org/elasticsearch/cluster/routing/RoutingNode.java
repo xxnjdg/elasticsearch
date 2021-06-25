@@ -35,10 +35,12 @@ import java.util.List;
  */
 public class RoutingNode implements Iterable<ShardRouting> {
 
+    //node id
     private final String nodeId;
 
     private final DiscoveryNode node;
 
+    //分片数组
     private final LinkedHashMap<ShardId, ShardRouting> shards; // LinkedHashMap to preserve order
 
     public RoutingNode(String nodeId, DiscoveryNode node, ShardRouting... shards) {

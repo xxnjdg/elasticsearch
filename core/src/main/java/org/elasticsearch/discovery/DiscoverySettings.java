@@ -64,8 +64,10 @@ public class DiscoverySettings extends AbstractComponent {
         Setting.positiveTimeSetting("discovery.initial_state_timeout", TimeValue.timeValueSeconds(30), Property.NodeScope);
 
     private volatile ClusterBlock noMasterBlock;
+    //默认30s
     private volatile TimeValue publishTimeout;
 
+    //默认30s
     private volatile TimeValue commitTimeout;
     private volatile boolean publishDiff;
 

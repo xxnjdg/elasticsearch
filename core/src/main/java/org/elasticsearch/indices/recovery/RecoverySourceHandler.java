@@ -143,12 +143,14 @@ public class RecoverySourceHandler {
             assert targetShardRouting.initializing() : "expected recovery target to be initializing but was " + targetShardRouting;
         });
 
+        //首先获取一个保留锁， 使得translog不被清理
         try (Closeable ignored = shard.acquireTranslogRetentionLock()) {
 
             final Translog translog = shard.getTranslog();
 
             final long startingSeqNo;
             final long requiredSeqNoRangeStart;
+            //false
             final boolean isSequenceNumberBasedRecoveryPossible = request.startingSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO &&
                 isTargetSameHistory() && isTranslogReadyForSequenceNumberBasedRecovery();
             if (isSequenceNumberBasedRecoveryPossible) {
@@ -158,6 +160,7 @@ public class RecoverySourceHandler {
             } else {
                 final Engine.IndexCommitRef phase1Snapshot;
                 try {
+                    //获取最新一次提交的文件
                     phase1Snapshot = shard.acquireIndexCommit(false);
                 } catch (final Exception e) {
                     throw new RecoveryEngineException(shard.shardId(), 1, "snapshot failed", e);
@@ -166,9 +169,11 @@ public class RecoverySourceHandler {
                 // on the target. Note that it will still filter out legacy operations with no sequence numbers
                 startingSeqNo = 0;
                 // but we must have everything above the local checkpoint in the commit
+                //0
                 requiredSeqNoRangeStart =
                     Long.parseLong(phase1Snapshot.getIndexCommit().getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)) + 1;
                 try {
+                    //恢复第一阶段，传送索引文件
                     phase1(phase1Snapshot.getIndexCommit(), translog::totalOperations);
                 } catch (final Exception e) {
                     throw new RecoveryEngineException(shard.shardId(), 1, "phase1 failed", e);
@@ -187,11 +192,13 @@ public class RecoverySourceHandler {
             runUnderPrimaryPermit(() -> shard.initiateTracking(request.targetAllocationId()));
 
             try {
+                //告诉副分片开始创建 Engine
                 prepareTargetForTranslog(translog.estimateTotalOperationsFromMinSeq(startingSeqNo));
             } catch (final Exception e) {
                 throw new RecoveryEngineException(shard.shardId(), 1, "prepare target for translog failed", e);
             }
 
+            //-1
             final long endingSeqNo = shard.seqNoStats().getMaxSeqNo();
             /*
              * We need to wait for all operations up to the current max to complete, otherwise we can not guarantee that all
@@ -252,6 +259,7 @@ public class RecoverySourceHandler {
         // the start recovery request is initialized with the starting sequence number set to the target shard's local checkpoint plus one
         if (startingSeqNo - 1 <= localCheckpoint) {
             final LocalCheckpointTracker tracker = new LocalCheckpointTracker(startingSeqNo, startingSeqNo - 1);
+            //检查Translog中的数据是否足够
             try (Translog.Snapshot snapshot = shard.getTranslog().newSnapshotFromMinSeqNo(startingSeqNo)) {
                 Translog.Operation operation;
                 while ((operation = snapshot.next()) != null) {
@@ -275,6 +283,7 @@ public class RecoverySourceHandler {
      * segments that are missing. Only segments that have the same size and
      * checksum can be reused
      */
+    //translogOps = translog::totalOperations
     public void phase1(final IndexCommit snapshot, final Supplier<Integer> translogOps) {
         cancellableThreads.checkForCancel();
         // Total size of segment files that are recovered
@@ -319,6 +328,7 @@ public class RecoverySourceHandler {
                 // so we don't return here
                 logger.trace("skipping [phase1]- identical sync id [{}] found on both source and target", recoverySourceSyncId);
             } else {
+                //
                 final Store.RecoveryDiff diff = recoverySourceMetadata.recoveryDiff(request.metadataSnapshot());
                 for (StoreFileMetaData md : diff.identical) {
                     response.phase1ExistingFileNames.add(md.name());
@@ -351,10 +361,12 @@ public class RecoverySourceHandler {
                 logger.trace("recovery [phase1]: recovering_files [{}] with total_size [{}], reusing_files [{}] with total_size [{}]",
                         response.phase1FileNames.size(),
                         new ByteSizeValue(totalSize), response.phase1ExistingFileNames.size(), new ByteSizeValue(existingTotalSize));
+                //发送文件元数据
                 cancellableThreads.execute(() ->
                         recoveryTarget.receiveFileInfo(response.phase1FileNames, response.phase1FileSizes, response.phase1ExistingFileNames,
                                 response.phase1ExistingFileSizes, translogOps.get()));
                 // How many bytes we've copied since we last called RateLimiter.pause
+                //真正开始发送文件
                 final Function<StoreFileMetaData, OutputStream> outputStreamFactories =
                         md -> new BufferedOutputStream(new RecoveryOutputStream(md, translogOps), chunkSizeInBytes);
                 sendFiles(store, phase1Files.toArray(new StoreFileMetaData[phase1Files.size()]), outputStreamFactories);
@@ -367,6 +379,7 @@ public class RecoverySourceHandler {
                 // related to this recovery (out of date segments, for example)
                 // are deleted
                 try {
+                    //恢复的收尾工作
                     cancellableThreads.executeIO(() ->
                         recoveryTarget.cleanFiles(translogOps.get(), recoverySourceMetadata));
                 } catch (RemoteTransportException | IOException targetException) {
@@ -426,6 +439,7 @@ public class RecoverySourceHandler {
         final long startEngineStart = stopWatch.totalTime().millis();
         // Send a request preparing the new shard's translog to receive operations. This ensures the shard engine is started and disables
         // garbage collection (not the JVM's GC!) of tombstone deletes.
+        //告诉副分片开始创建 Engine
         cancellableThreads.executeIO(() -> recoveryTarget.prepareForTranslogOperations(totalTranslogOps));
         stopWatch.stop();
 

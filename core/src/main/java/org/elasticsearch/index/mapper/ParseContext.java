@@ -42,6 +42,7 @@ public abstract class ParseContext {
         private final Document parent;
         private final String path;
         private final String prefix;
+        //lucene增加的字段
         private final List<IndexableField> fields;
         private ObjectObjectMap<Object, IndexableField> keyedFields;
 

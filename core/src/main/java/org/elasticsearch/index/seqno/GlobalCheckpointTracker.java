@@ -80,6 +80,7 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
      *   to replica mode (using {@link #completeRelocationHandoff}), as the relocation target will be in charge of the global checkpoint
      *   computation from that point on.
      */
+    //true
     boolean primaryMode;
     /**
      * Boolean flag that indicates if a relocation handoff is in progress. A handoff is started by calling {@link #startRelocationHandoff}
@@ -106,8 +107,10 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
      * until the newer cluster state were to be applied, which would unsafely advance the global checkpoint. This field thus captures
      * the version of the last applied cluster state to ensure in-order updates.
      */
+    //-1
     long appliedClusterStateVersion;
 
+    //
     IndexShardRoutingTable routingTable;
 
     /**
@@ -115,6 +118,9 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
      * and / or in-sync, possibly also containing information about unassigned in-sync shard copies. The information that is tracked for
      * each shard copy is explained in the docs for the {@link CheckpointState} class.
      */
+    //allocationId new CheckpointState(SequenceNumbers.UNASSIGNED_SEQ_NO -1, SequenceNumbers.UNASSIGNED_SEQ_NO -1 ,, true)
+        //initializingId, new CheckpointState(SequenceNumbers.UNASSIGNED_SEQ_NO -1, SequenceNumbers.UNASSIGNED_SEQ_NO -1, true)
+        //fu new CheckpointState(SequenceNumbers.UNASSIGNED_SEQ_NO, SequenceNumbers.UNASSIGNED_SEQ_NO = -1, false)
     final Map<String, CheckpointState> checkpoints;
 
     /**
@@ -126,6 +132,7 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
     /**
      * Cached value for the last replication group that was computed
      */
+    //
     volatile ReplicationGroup replicationGroup;
 
     public static class CheckpointState implements Writeable {
@@ -133,16 +140,19 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
         /**
          * the last local checkpoint information that we have for this shard
          */
+        //SequenceNumbers.UNASSIGNED_SEQ_NO -1
         long localCheckpoint;
 
         /**
          * the last global checkpoint information that we have for this shard. This information is computed for the primary if
          * the tracker is in primary mode and received from the primary if in replica mode.
          */
+        //SequenceNumbers.UNASSIGNED_SEQ_NO -1
         long globalCheckpoint;
         /**
          * whether this shard is treated as in-sync and thus contributes to the global checkpoint calculation
          */
+        //false true
         boolean inSync;
 
         public CheckpointState(long localCheckpoint, long globalCheckpoint, boolean inSync) {
@@ -437,7 +447,9 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
             "expected " + shardAllocationId + " to have initialized entry in " + checkpoints + " when activating primary";
         assert localCheckpoint >= SequenceNumbers.NO_OPS_PERFORMED;
         primaryMode = true;
+        //更新本地 Checkpoint
         updateLocalCheckpoint(shardAllocationId, checkpoints.get(shardAllocationId), localCheckpoint);
+        //
         updateGlobalCheckpointOnPrimary();
         assert invariant();
     }
@@ -460,6 +472,7 @@ public class GlobalCheckpointTracker extends AbstractIndexShardComponent {
                 "update from master in primary mode contains in-sync ids " + inSyncAllocationIds +
                     " that have no matching entries in " + checkpoints;
             // remove entries which don't exist on master
+            // ShardRoutingState.INITIALIZING 状态分片 AllocationId 集合
             Set<String> initializingAllocationIds = routingTable.getAllInitializingShards().stream()
                 .map(ShardRouting::allocationId).map(AllocationId::getId).collect(Collectors.toSet());
             boolean removedEntries = checkpoints.keySet().removeIf(

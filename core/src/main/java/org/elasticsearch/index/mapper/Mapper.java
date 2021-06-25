@@ -78,6 +78,7 @@ public abstract class Mapper implements ToXContentFragment, Iterable<Mapper> {
 
         class ParserContext {
 
+            //type名字
             private final String type;
 
             private final IndexAnalyzers indexAnalyzers;
@@ -157,6 +158,7 @@ public abstract class Mapper implements ToXContentFragment, Iterable<Mapper> {
         Mapper.Builder<?,?> parse(String name, Map<String, Object> node, ParserContext parserContext) throws MapperParsingException;
     }
 
+    //type名字
     private final String simpleName;
 
     public Mapper(String simpleName) {

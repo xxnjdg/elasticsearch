@@ -76,6 +76,7 @@ public class ClusterService extends AbstractLifecycleComponent {
 
     /**
      * Creates a new cluster state builder that is initialized with the cluster name and all initial cluster state customs.
+     * 创建一个新的集群状态
      */
     public ClusterState.Builder newClusterStateBuilder() {
         ClusterState.Builder builder = ClusterState.builder(ClusterName.CLUSTER_NAME_SETTING.get(settings));

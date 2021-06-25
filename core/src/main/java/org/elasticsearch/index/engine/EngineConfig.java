@@ -54,6 +54,7 @@ public final class EngineConfig {
     private final String allocationId;
     private final IndexSettings indexSettings;
     private final ByteSizeValue indexingBufferSize;
+    //false true
     private volatile boolean enableGcDeletes = true;
     private final TimeValue flushMergesAfter;
     private final String codecName;
@@ -64,6 +65,7 @@ public final class EngineConfig {
     private final Analyzer analyzer;
     private final Similarity similarity;
     private final CodecService codecService;
+    //new ShardEventListener()
     private final Engine.EventListener eventListener;
     private final QueryCache queryCache;
     private final QueryCachingPolicy queryCachingPolicy;
@@ -72,8 +74,11 @@ public final class EngineConfig {
     @Nullable
     private final List<ReferenceManager.RefreshListener> internalRefreshListener;
     @Nullable
+    //null
     private final Sort indexSort;
+    //true
     private final boolean forceNewHistoryUUID;
+    //org.elasticsearch.index.shard.IndexShard.runTranslogRecovery
     private final TranslogRecoveryRunner translogRecoveryRunner;
 
     /**
@@ -108,6 +113,7 @@ public final class EngineConfig {
         Property.IndexScope, Property.Dynamic);
 
     private final TranslogConfig translogConfig;
+    //EngineConfig.OpenMode.CREATE_INDEX_AND_TRANSLOG
     private final OpenMode openMode;
 
     /**

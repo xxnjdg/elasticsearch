@@ -48,6 +48,7 @@ public class ClusterStateObserver {
     volatile TimeValue timeOutValue;
 
 
+    //记录新的集群状态
     final AtomicReference<StoredState> lastObservedState;
     final TimeoutClusterStateListener clusterStateListener = new ObserverClusterStateListener();
     // observingContext is not null when waiting on cluster state changes

@@ -61,6 +61,7 @@ public class RoutingTable implements Iterable<IndexRoutingTable>, Diffable<Routi
     private final long version;
 
     // index to IndexRoutingTable map
+    //key = 索引名字  value = IndexRoutingTable
     private final ImmutableOpenMap<String, IndexRoutingTable> indicesRouting;
 
     RoutingTable(long version, ImmutableOpenMap<String, IndexRoutingTable> indicesRouting) {
@@ -422,7 +423,9 @@ public class RoutingTable implements Iterable<IndexRoutingTable>, Diffable<Routi
             this.version = version;
 
             Map<String, IndexRoutingTable.Builder> indexRoutingTableBuilders = new HashMap<>();
+            //遍历节点
             for (RoutingNode routingNode : routingNodes) {
+                //遍历节点分配的分片
                 for (ShardRouting shardRoutingEntry : routingNode) {
                     // every relocating shard has a double entry, ignore the target one.
                     if (shardRoutingEntry.initializing() && shardRoutingEntry.relocatingNodeId() != null)

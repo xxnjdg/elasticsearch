@@ -48,13 +48,20 @@ public class DiscoveryNodes extends AbstractDiffable<DiscoveryNodes> implements 
 
     public static final DiscoveryNodes EMPTY_NODES = builder().build();
 
+    //节点列表，开始只有本地节点
     private final ImmutableOpenMap<String, DiscoveryNode> nodes;
+    //具有数据功能的节点列表
     private final ImmutableOpenMap<String, DiscoveryNode> dataNodes;
+    //具有选主功能的节点列表
     private final ImmutableOpenMap<String, DiscoveryNode> masterNodes;
+    //具有 ingest 功能的节点列表
     private final ImmutableOpenMap<String, DiscoveryNode> ingestNodes;
 
+    //null
     private final String masterNodeId;
+    //本地节点id
     private final String localNodeId;
+    //版本
     private final Version minNonClientNodeVersion;
     private final Version maxNonClientNodeVersion;
     private final Version maxNodeVersion;
@@ -429,9 +436,13 @@ public class DiscoveryNodes extends AbstractDiffable<DiscoveryNodes> implements 
     public static class Delta {
 
         private final String localNodeId;
+        //前一个主节点，没有选举主节点字段才有意义
         private final DiscoveryNode previousMasterNode;
+        //新的主节点，没有选举主节点字段才有意义
         private final DiscoveryNode newMasterNode;
+        //新状态后移除的节点
         private final List<DiscoveryNode> removed;
+        //新状态后增加的节点
         private final List<DiscoveryNode> added;
 
         private Delta(@Nullable DiscoveryNode previousMasterNode, @Nullable DiscoveryNode newMasterNode, String localNodeId,

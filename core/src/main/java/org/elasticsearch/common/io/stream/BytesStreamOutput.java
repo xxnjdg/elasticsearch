@@ -34,6 +34,7 @@ public class BytesStreamOutput extends BytesStream {
 
     protected final BigArrays bigArrays;
 
+    //分配了字节数组
     protected ByteArray bytes;
     protected int count;
 
@@ -58,6 +59,7 @@ public class BytesStreamOutput extends BytesStream {
 
     protected BytesStreamOutput(int expectedSize, BigArrays bigArrays) {
         this.bigArrays = bigArrays;
+        //分配 expectedSize 大小的字节数组
         this.bytes = bigArrays.newByteArray(expectedSize);
     }
 

@@ -66,6 +66,7 @@ public class SequenceNumbers {
             }
         }
 
+        //-1 -1 SequenceNumbers.UNASSIGNED_SEQ_NO
         return new SeqNoStats(maxSeqNo, localCheckpoint, globalCheckpoint);
     }
 

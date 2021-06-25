@@ -46,6 +46,7 @@ public abstract class TaskBatcher {
     private final Logger logger;
     private final PrioritizedEsThreadPoolExecutor threadExecutor;
     // package visible for tests
+    //value = 任务列表
     final Map<Object, LinkedHashSet<BatchedTask>> tasksPerBatchingKey = new HashMap<>();
 
     public TaskBatcher(Logger logger, PrioritizedEsThreadPoolExecutor threadExecutor) {
@@ -53,6 +54,7 @@ public abstract class TaskBatcher {
         this.threadExecutor = threadExecutor;
     }
 
+    //提交任务
     public void submitTasks(List<? extends BatchedTask> tasks, @Nullable TimeValue timeout) throws EsRejectedExecutionException {
         if (tasks.isEmpty()) {
             return;
@@ -61,6 +63,7 @@ public abstract class TaskBatcher {
         assert tasks.stream().allMatch(t -> t.batchingKey == firstTask.batchingKey) :
             "tasks submitted in a batch should share the same batching key: " + tasks;
         // convert to an identity map to check for dups based on task identity
+        //转换成 map
         final Map<Object, BatchedTask> tasksIdentity = tasks.stream().collect(Collectors.toMap(
             BatchedTask::getTask,
             Function.identity(),
@@ -68,6 +71,7 @@ public abstract class TaskBatcher {
             IdentityHashMap::new));
 
         synchronized (tasksPerBatchingKey) {
+            //tasks 列表所有元素 firstTask.batchingKey 都是一样
             LinkedHashSet<BatchedTask> existingTasks = tasksPerBatchingKey.computeIfAbsent(firstTask.batchingKey,
                 k -> new LinkedHashSet<>(tasks.size()));
             for (BatchedTask existing : existingTasks) {
@@ -78,12 +82,14 @@ public abstract class TaskBatcher {
                         Collections.singletonList(existing)) + "] with source [" + duplicateTask.source + "] is already queued");
                 }
             }
+            //全加入
             existingTasks.addAll(tasks);
         }
 
         if (timeout != null) {
             threadExecutor.execute(firstTask, timeout, () -> onTimeoutInternal(tasks, timeout));
         } else {
+            //交给线程池执行
             threadExecutor.execute(firstTask);
         }
     }
@@ -171,6 +177,7 @@ public abstract class TaskBatcher {
         /**
          * the object that is used as batching key
          */
+        //executor
         protected final Object batchingKey;
         /**
          * the task object that is wrapped

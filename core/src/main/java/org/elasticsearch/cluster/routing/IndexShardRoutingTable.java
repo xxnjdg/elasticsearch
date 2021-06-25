@@ -61,13 +61,19 @@ public class IndexShardRoutingTable implements Iterable<ShardRouting> {
     final ShardId shardId;
 
     final ShardRouting primary;
+    //primary 列表，主分片数组，只会有一个
     final List<ShardRouting> primaryAsList;
+    //replicas 列表，副分片数组，有多个
     final List<ShardRouting> replicas;
+    //所有分片数组
     final List<ShardRouting> shards;
     final List<ShardRouting> activeShards;
+    //已经分配给node的分片数组
     final List<ShardRouting> assignedShards;
+    //初始化状态的分片
     final Set<String> allAllocationIds;
     static final List<ShardRouting> NO_SHARDS = Collections.emptyList();
+    //false
     final boolean allShardsStarted;
 
     private volatile Map<AttributesKey, AttributesRoutings> activeShardsByAttributes = emptyMap();
@@ -78,6 +84,7 @@ public class IndexShardRoutingTable implements Iterable<ShardRouting> {
      * The initializing list, including ones that are initializing on a target node because of relocation.
      * If we can come up with a better variable name, it would be nice...
      */
+    //初始化状态的分片
     final List<ShardRouting> allInitializingShards;
 
     IndexShardRoutingTable(ShardId shardId, List<ShardRouting> shards) {

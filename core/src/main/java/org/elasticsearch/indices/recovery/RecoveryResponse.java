@@ -29,15 +29,20 @@ import java.util.List;
 
 class RecoveryResponse extends TransportResponse {
 
+    //要添加或更新的文件名
     List<String> phase1FileNames = new ArrayList<>();
+    //长度
     List<Long> phase1FileSizes = new ArrayList<>();
     List<String> phase1ExistingFileNames = new ArrayList<>();
     List<Long> phase1ExistingFileSizes = new ArrayList<>();
+    //总长度
     long phase1TotalSize;
     long phase1ExistingTotalSize;
+    //phase1 处理时间
     long phase1Time;
     long phase1ThrottlingWaitTime;
 
+    //创建 Engine 处理时间
     long startTime;
 
     int phase2Operations;

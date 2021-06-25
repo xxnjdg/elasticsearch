@@ -83,6 +83,7 @@ public class PlainTransportFuture<V extends TransportResponse> extends BaseFutur
     public void handleResponse(V response) {
         try {
             handler.handleResponse(response);
+            //把获取到的 response 设置回来
             set(response);
         } catch (Exception e) {
             handleException(new ResponseHandlerFailureTransportException(e));

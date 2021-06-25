@@ -161,6 +161,7 @@ public abstract class TransportMasterNodeAction<Request extends MasterNodeReques
                             }
                         }
                     };
+                    //核心代码
                     threadPool.executor(executor).execute(new ActionRunnable(delegate) {
                         @Override
                         protected void doRun() throws Exception {
@@ -175,6 +176,7 @@ public abstract class TransportMasterNodeAction<Request extends MasterNodeReques
                 } else {
                     DiscoveryNode masterNode = nodes.getMasterNode();
                     final String actionName = getMasterActionName(masterNode);
+                    //发送给主节点处理
                     transportService.sendRequest(masterNode, actionName, request, new ActionListenerResponseHandler<Response>(listener,
                         TransportMasterNodeAction.this::newResponse) {
                         @Override

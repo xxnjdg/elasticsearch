@@ -131,6 +131,7 @@ public class PeerRecoveryTargetService extends AbstractComponent implements Inde
         }
     }
 
+    //开始恢复索引
     public void startRecovery(final IndexShard indexShard, final DiscoveryNode sourceNode, final RecoveryListener listener) {
         // create a new recovery status, and process...
         final long recoveryId = onGoingRecoveries.startRecovery(indexShard, sourceNode, listener, recoverySettings.activityTimeout());
@@ -312,6 +313,7 @@ public class PeerRecoveryTargetService extends AbstractComponent implements Inde
         final StartRecoveryRequest request;
         logger.trace("{} collecting local files for [{}]", recoveryTarget.shardId(), recoveryTarget.sourceNode());
 
+        //Store.MetadataSnapshot.EMPTY
         final Store.MetadataSnapshot metadataSnapshot = getStoreMetadataSnapshot(recoveryTarget);
         logger.trace("{} local file count [{}]", recoveryTarget.shardId(), metadataSnapshot.size());
 
@@ -332,6 +334,7 @@ public class PeerRecoveryTargetService extends AbstractComponent implements Inde
                 recoveryTarget.sourceNode());
         }
 
+        //构建
         request = new StartRecoveryRequest(
             recoveryTarget.shardId(),
             recoveryTarget.indexShard().routingEntry().allocationId().getId(),
@@ -565,6 +568,7 @@ public class PeerRecoveryTargetService extends AbstractComponent implements Inde
                     indexState.addSourceThrottling(request.sourceThrottleTimeInNanos());
                 }
 
+                //限流
                 RateLimiter rateLimiter = recoverySettings.rateLimiter();
                 if (rateLimiter != null) {
                     long bytes = bytesSinceLastPause.addAndGet(request.content().length());

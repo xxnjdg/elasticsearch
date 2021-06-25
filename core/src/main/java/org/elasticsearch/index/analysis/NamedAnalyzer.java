@@ -30,8 +30,11 @@ import java.util.Objects;
  */
 public class NamedAnalyzer extends DelegatingAnalyzerWrapper {
 
+    //PreBuiltAnalyzers 里名字
     private final String name;
+    //AnalyzerScope.INDICES
     private final AnalyzerScope scope;
+    //PreBuiltAnalyzers 里创建的 analyzer ,例如 StandardAnalyzer
     private final Analyzer analyzer;
     private final int positionIncrementGap;
 

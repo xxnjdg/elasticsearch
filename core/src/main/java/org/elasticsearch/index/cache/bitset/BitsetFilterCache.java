@@ -78,6 +78,7 @@ public final class BitsetFilterCache extends AbstractIndexComponent implements I
 
     private final boolean loadRandomAccessFiltersEagerly;
     private final Cache<IndexReader.CacheKey, Cache<Query, Value>> loadedFilters;
+    //new BitsetCacheListener(this)
     private final Listener listener;
 
     public BitsetFilterCache(IndexSettings indexSettings, Listener listener) {

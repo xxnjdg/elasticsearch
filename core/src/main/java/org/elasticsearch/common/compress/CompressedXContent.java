@@ -65,6 +65,7 @@ public final class CompressedXContent {
         return (int) crc32.getValue();
     }
 
+    //type名字
     private final byte[] bytes;
     private final int crc32;
 
@@ -79,15 +80,20 @@ public final class CompressedXContent {
      * Create a {@link CompressedXContent} out of a {@link ToXContent} instance.
      */
     public CompressedXContent(ToXContent xcontent, XContentType type, ToXContent.Params params) throws IOException {
+        //初始化输入流
         BytesStreamOutput bStream = new BytesStreamOutput();
         OutputStream compressedStream = CompressorFactory.COMPRESSOR.streamOutput(bStream);
         CRC32 crc32 = new CRC32();
         OutputStream checkedStream = new CheckedOutputStream(compressedStream, crc32);
+        //开始写入json
         try (XContentBuilder builder = XContentFactory.contentBuilder(type, checkedStream)) {
+            //开始
             builder.startObject();
             xcontent.toXContent(builder, params);
+            //结束
             builder.endObject();
         }
+        //把json数据转成字节数组
         this.bytes = BytesReference.toBytes(bStream.bytes());
         this.crc32 = (int) crc32.getValue();
         assertConsistent();

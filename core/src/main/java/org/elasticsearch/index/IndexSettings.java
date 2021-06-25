@@ -240,13 +240,16 @@ public final class IndexSettings {
             Property.Final);
     }
 
+    //索引
     private final Index index;
     private final Version version;
     private final Logger logger;
     private final String nodeName;
+    //节点setting 就是在配置文件的setting
     private final Settings nodeSettings;
     private final int numberOfShards;
     // volatile fields are updated via #updateIndexMetaData(IndexMetaData) under lock
+    //nodeSettings 和 索引自动加入的 setting 合并一起
     private volatile Settings settings;
     private volatile IndexMetaData indexMetaData;
     private volatile List<String> defaultFields;

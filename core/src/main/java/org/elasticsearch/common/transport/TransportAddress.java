@@ -50,6 +50,7 @@ public final class TransportAddress implements Writeable {
         }
     }
 
+    //绑定地址
     private final InetSocketAddress address;
 
     public TransportAddress(InetAddress address, int port) {

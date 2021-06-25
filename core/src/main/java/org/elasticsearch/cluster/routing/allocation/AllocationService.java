@@ -103,8 +103,10 @@ public class AllocationService extends AbstractComponent {
         // as starting a primary relocation target can reinitialize replica shards, start replicas first
         startedShards = new ArrayList<>(startedShards);
         Collections.sort(startedShards, Comparator.comparing(ShardRouting::primary));
+        //startedShards 状态改成 started
         applyStartedShards(allocation, startedShards);
         gatewayAllocator.applyStartedShards(allocation, startedShards);
+        //分配副分片给节点
         reroute(allocation);
         String startedShardsAsString = firstListElementsToCommaDelimitedString(startedShards, s -> s.shardId().toString());
         return buildResultAndLogHealthChange(clusterState, allocation, "shards started [" + startedShardsAsString + "] ...");
@@ -113,9 +115,12 @@ public class AllocationService extends AbstractComponent {
     protected ClusterState buildResultAndLogHealthChange(ClusterState oldState, RoutingAllocation allocation, String reason) {
         RoutingTable oldRoutingTable = oldState.routingTable();
         RoutingNodes newRoutingNodes = allocation.routingNodes();
+        //从新构建新路由表
         final RoutingTable newRoutingTable = new RoutingTable.Builder().updateNodes(oldRoutingTable.version(), newRoutingNodes).build();
+        //返回了新 MetaData
         MetaData newMetaData = allocation.updateMetaDataWithRoutingChanges(newRoutingTable);
         assert newRoutingTable.validate(newMetaData); // validates the routing table is coherent with the cluster state metadata
+        //新 newStateBuilder
         final ClusterState.Builder newStateBuilder = ClusterState.builder(oldState)
             .routingTable(newRoutingTable)
             .metaData(newMetaData);
@@ -128,6 +133,7 @@ public class AllocationService extends AbstractComponent {
                 newStateBuilder.customs(customsBuilder.build());
             }
         }
+        //新状态
         final ClusterState newState = newStateBuilder.build();
         logClusterHealthStateChange(
             new ClusterStateHealth(oldState),
@@ -317,6 +323,7 @@ public class AllocationService extends AbstractComponent {
     protected ClusterState reroute(final ClusterState clusterState, String reason, boolean debug) {
         RoutingNodes routingNodes = getMutableRoutingNodes(clusterState);
         // shuffle the unassigned nodes, just so we won't have things like poison failed shards
+        //洗下分片
         routingNodes.unassigned().shuffle();
         RoutingAllocation allocation = new RoutingAllocation(allocationDeciders, routingNodes, clusterState,
             clusterInfoService.getClusterInfo(), currentNanoTime());
@@ -325,6 +332,7 @@ public class AllocationService extends AbstractComponent {
         if (allocation.routingNodesChanged() == false) {
             return clusterState;
         }
+        //返回新集群状态
         return buildResultAndLogHealthChange(clusterState, allocation, reason);
     }
 
@@ -349,8 +357,10 @@ public class AllocationService extends AbstractComponent {
         assert hasDeadNodes(allocation) == false : "dead nodes should be explicitly cleaned up. See deassociateDeadNodes";
 
         // now allocate all the unassigned to available nodes
+        //是否有未分配分片
         if (allocation.routingNodes().unassigned().size() > 0) {
             removeDelayMarkers(allocation);
+            //刚创建的分片没执行什么逻辑
             gatewayAllocator.allocateUnassigned(allocation);
         }
 

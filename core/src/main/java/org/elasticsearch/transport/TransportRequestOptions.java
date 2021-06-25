@@ -23,8 +23,10 @@ import org.elasticsearch.common.unit.TimeValue;
 
 public class TransportRequestOptions {
 
+    //超时时间
     private final TimeValue timeout;
     private final boolean compress;
+    //默认 Type.REG
     private final Type type;
 
     private TransportRequestOptions(TimeValue timeout, boolean compress, Type type) {

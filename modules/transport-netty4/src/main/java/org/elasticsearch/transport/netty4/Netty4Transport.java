@@ -105,8 +105,11 @@ public class Netty4Transport extends TcpTransport {
     protected final ByteSizeValue receivePredictorMin;
     protected final ByteSizeValue receivePredictorMax;
     // package private for testing
+    //Netty4OpenChannelsHandler
     volatile Netty4OpenChannelsHandler serverOpenChannels;
+    //
     protected volatile Bootstrap bootstrap;
+    //ServerBootstrap 列表
     protected final Map<String, ServerBootstrap> serverBootstraps = newConcurrentMap();
 
     public Netty4Transport(Settings settings, ThreadPool threadPool, NetworkService networkService, BigArrays bigArrays,
@@ -130,12 +133,16 @@ public class Netty4Transport extends TcpTransport {
     protected void doStart() {
         boolean success = false;
         try {
+            //创建 Bootstrap
             bootstrap = createBootstrap();
             if (NetworkService.NETWORK_SERVER.get(settings)) {
                 final Netty4OpenChannelsHandler openChannels = new Netty4OpenChannelsHandler(logger);
                 this.serverOpenChannels = openChannels;
+                //默认只有一个 ProfileSettings
                 for (ProfileSettings profileSettings : profileSettings) {
+                    //创建 ServerBootstrap
                     createServerBootstrap(profileSettings);
+                    //ServerBootstrap 绑定监听地址
                     bindServer(profileSettings);
                 }
             }
@@ -153,10 +160,19 @@ public class Netty4Transport extends TcpTransport {
         bootstrap.group(new NioEventLoopGroup(workerCount, daemonThreadFactory(settings, TRANSPORT_CLIENT_BOSS_THREAD_NAME_PREFIX)));
         bootstrap.channel(NioSocketChannel.class);
 
+        //处理函数
         bootstrap.handler(getClientChannelInitializer());
 
+        //连接超时毫秒数，默认值30秒
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(defaultConnectionProfile.getConnectTimeout().millis()));
+        //TCP_NODELAY 对应于socket选项中的TCP_NODELAY，该参数的使用和Nagle算法有关，Nagle算法是将小的数据包组装为更大的帧进行发送，
+        // 而不会来一个数据包发送一次，目的是为了提高每次发送的效率，因此在数据包没有组成足够大的帧时，就会延迟该数据包的发送，
+        // 虽然提高了网络负载却造成了延时，TCP_NODELAY参数设置为true，就可以禁用Nagle算法，即使用小数据包即时传输。
+        //此时默认值为true
         bootstrap.option(ChannelOption.TCP_NODELAY, TCP_NO_DELAY.get(settings));
+        //Socket参数，连接保活，默认值为False。启用该功能时，TCP会主动探测空闲连接的有效性。
+        //可以将此功能视为TCP的心跳机制，需要注意的是：默认的心跳间隔是7200s即2小时。Netty默认关闭该功能
+        //此时默认为true
         bootstrap.option(ChannelOption.SO_KEEPALIVE, TCP_KEEP_ALIVE.get(settings));
 
         final ByteSizeValue tcpSendBufferSize = TCP_SEND_BUFFER_SIZE.get(settings);
@@ -169,8 +185,17 @@ public class Netty4Transport extends TcpTransport {
             bootstrap.option(ChannelOption.SO_RCVBUF, Math.toIntExact(tcpReceiveBufferSize.getBytes()));
         }
 
+        //Netty参数，用于Channel分配接受Buffer的分配器，默认值为AdaptiveRecvByteBufAllocator.DEFAULT，
+        // 是一个自适应的接受缓冲区分配器，能根据接受到的数据自动调节大小。可选值为FixedRecvByteBufAllocator，固定大小的接受缓冲区分配器。
+        //es默认值 new FixedRecvByteBufAllocator((int) receivePredictorMax.getBytes());
+        //receivePredictorMax.getBytes() 为 64kB
         bootstrap.option(ChannelOption.RCVBUF_ALLOCATOR, recvByteBufAllocator);
 
+        //SO_REUSEADDR 对应的是socket选项中SO_REUSEADDR，这个参数表示允许重复使用本地地址和端口，
+        // 例如，某个服务占用了TCP的8080端口，其他服务再对这个端口进行监听就会报错，
+        // SO_REUSEADDR这个参数就是用来解决这个问题的，该参数允许服务公用一个端口，这个在服务器程序中比较常用，
+        // 例如某个进程非正常退出，对一个端口的占用可能不会立即释放，这时候如果不设置这个参数，其他进程就不能立即使用这个端口。
+        //linux系统为true
         final boolean reuseAddress = TCP_REUSE_ADDRESS.get(settings);
         bootstrap.option(ChannelOption.SO_REUSEADDR, reuseAddress);
 
@@ -202,8 +227,10 @@ public class Netty4Transport extends TcpTransport {
         serverBootstrap.group(new NioEventLoopGroup(workerCount, workerFactory));
         serverBootstrap.channel(NioServerSocketChannel.class);
 
+        //处理方法
         serverBootstrap.childHandler(getServerChannelInitializer(name));
 
+        //参数说明参考 org.elasticsearch.transport.netty4.Netty4Transport.createBootstrap
         serverBootstrap.childOption(ChannelOption.TCP_NODELAY, profileSettings.tcpNoDelay);
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, profileSettings.tcpKeepAlive);
 
@@ -248,9 +275,11 @@ public class Netty4Transport extends TcpTransport {
         return channels == null ? 0 : channels.numberOfOpenChannels();
     }
 
+    //bootstrap 连接上远程服务
     @Override
     protected NettyTcpChannel initiateChannel(DiscoveryNode node, TimeValue connectTimeout, ActionListener<Void> listener)
         throws IOException {
+        //连接节点
         ChannelFuture channelFuture = bootstrap.connect(node.getAddress().address());
         Channel channel = channelFuture.channel();
         if (channel == null) {
@@ -281,9 +310,11 @@ public class Netty4Transport extends TcpTransport {
 
     @Override
     protected NettyTcpChannel bind(String name, InetSocketAddress address) {
+        //绑定监听地址，获取 Channel
         Channel channel = serverBootstraps.get(name).bind(address).syncUninterruptibly().channel();
         NettyTcpChannel esChannel = new NettyTcpChannel(channel);
         channel.attr(CHANNEL_KEY).set(esChannel);
+        //返回 NettyTcpChannel
         return esChannel;
     }
 
@@ -348,9 +379,13 @@ public class Netty4Transport extends TcpTransport {
             NettyTcpChannel nettyTcpChannel = new NettyTcpChannel(ch);
             ch.attr(CHANNEL_KEY).set(nettyTcpChannel);
             serverAcceptedChannel(nettyTcpChannel);
+            //日志处理器级别 LogLevel.TRACE
             ch.pipeline().addLast("logging", new ESLoggingHandler());
+            //统计打开的 channel
             ch.pipeline().addLast("open_channels", Netty4Transport.this.serverOpenChannels);
+            //检测数据长度是否有效
             ch.pipeline().addLast("size", new Netty4SizeHeaderFrameDecoder());
+            //处理数据
             ch.pipeline().addLast("dispatcher", new Netty4MessageChannelHandler(Netty4Transport.this, name));
         }
 
@@ -362,6 +397,7 @@ public class Netty4Transport extends TcpTransport {
     }
 
     private void addClosedExceptionLogger(Channel channel) {
+        //注册关闭事件
         channel.closeFuture().addListener(f -> {
             if (f.isSuccess() == false) {
                 logger.debug(() -> new ParameterizedMessage("exception while closing channel: {}", channel), f.cause());

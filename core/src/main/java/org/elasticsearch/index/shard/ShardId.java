@@ -34,6 +34,7 @@ public class ShardId implements Streamable, Comparable<ShardId> {
 
     private Index index;
 
+    //分片id,主副分片id是一样的
     private int shardId;
 
     private int hashCode;

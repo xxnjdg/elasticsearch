@@ -551,6 +551,7 @@ public class Netty4HttpServerTransport extends AbstractLifecycleComponent implem
 
         @Override
         protected void initChannel(Channel ch) throws Exception {
+            //统计打开 Channels
             ch.pipeline().addLast("openChannels", transport.serverOpenChannels);
             final HttpRequestDecoder decoder = new HttpRequestDecoder(
                 Math.toIntExact(transport.maxInitialLineLength.getBytes()),
@@ -568,9 +569,11 @@ public class Netty4HttpServerTransport extends AbstractLifecycleComponent implem
             if (transport.compression) {
                 ch.pipeline().addLast("encoder_compress", new HttpContentCompressor(transport.compressionLevel));
             }
+            //默认为 false
             if (SETTING_CORS_ENABLED.get(transport.settings())) {
                 ch.pipeline().addLast("cors", new Netty4CorsHandler(transport.getCorsConfig()));
             }
+            //默认为true
             if (transport.pipelining) {
                 ch.pipeline().addLast("pipelining", new HttpPipeliningHandler(transport.logger, transport.pipeliningMaxEvents));
             }

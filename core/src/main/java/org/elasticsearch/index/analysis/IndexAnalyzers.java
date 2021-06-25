@@ -35,10 +35,13 @@ import java.util.stream.Stream;
  * @see AnalysisRegistry
  */
 public final class IndexAnalyzers extends AbstractIndexComponent implements Closeable {
+    //默认分词器
     private final NamedAnalyzer defaultIndexAnalyzer;
     private final NamedAnalyzer defaultSearchAnalyzer;
     private final NamedAnalyzer defaultSearchQuoteAnalyzer;
+    //分词器列表
     private final Map<String, NamedAnalyzer> analyzers;
+    //空
     private final Map<String, NamedAnalyzer> normalizers;
     private final IndexSettings indexSettings;
 

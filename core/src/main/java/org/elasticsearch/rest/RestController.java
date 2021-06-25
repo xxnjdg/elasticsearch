@@ -66,13 +66,16 @@ public class RestController extends AbstractComponent implements HttpServerTrans
 
     private final PathTrie<MethodHandlers> handlers = new PathTrie<>(RestUtils.REST_DECODER);
 
+    //h->h
     private final UnaryOperator<RestHandler> handlerWrapper;
 
     private final NodeClient client;
 
+    //HierarchyCircuitBreakerService
     private final CircuitBreakerService circuitBreakerService;
 
     /** Rest headers that are copied to internal requests made during a rest request. */
+    //0
     private final Set<String> headersToCopy;
     private UsageService usageService;
 
@@ -166,6 +169,7 @@ public class RestController extends AbstractComponent implements HttpServerTrans
 
     @Override
     public void dispatchRequest(RestRequest request, RestChannel channel, ThreadContext threadContext) {
+        //处理 /favicon.ico
         if (request.rawPath().equals("/favicon.ico")) {
             handleFavicon(request, channel);
             return;

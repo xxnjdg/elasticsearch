@@ -90,7 +90,9 @@ public class ReplicationOperation<
     }
 
     public void execute() throws Exception {
+        //检查活动分片数，默认1个即可
         final String activeShardCountFailure = checkActiveShardCount();
+        //获取主分片
         final ShardRouting primaryRouting = primary.routingEntry();
         final ShardId primaryId = primaryRouting.shardId();
         if (activeShardCountFailure != null) {
@@ -99,6 +101,7 @@ public class ReplicationOperation<
             return;
         }
 
+        //计数
         totalShards.incrementAndGet();
         pendingActions.incrementAndGet(); // increase by 1 until we finish all primary coordination
         primaryResult = primary.perform(request);

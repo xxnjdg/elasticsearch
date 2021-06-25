@@ -70,20 +70,24 @@ public class MasterService extends AbstractLifecycleComponent {
 
     public static final String MASTER_UPDATE_THREAD_NAME = "masterService#updateTask";
 
+    //org.elasticsearch.discovery.zen.ZenDiscovery.publish
     private BiConsumer<ClusterChangedEvent, Discovery.AckListener> clusterStatePublisher;
 
+    //org.elasticsearch.discovery.zen.ZenDiscovery.clusterState
     private java.util.function.Supplier<ClusterState> clusterStateSupplier;
 
     private volatile TimeValue slowTaskLoggingThreshold;
 
     protected final ThreadPool threadPool;
 
+    //PrioritizedEsThreadPoolExecutor
     private volatile PrioritizedEsThreadPoolExecutor threadPoolExecutor;
     private volatile Batcher taskBatcher;
 
     public MasterService(Settings settings, ThreadPool threadPool) {
         super(settings);
         // TODO: introduce a dedicated setting for master service
+        //默认30s
         this.slowTaskLoggingThreshold = CLUSTER_SERVICE_SLOW_TASK_LOGGING_THRESHOLD_SETTING.get(settings);
         this.threadPool = threadPool;
     }
@@ -127,6 +131,7 @@ public class MasterService extends AbstractLifecycleComponent {
         protected void run(Object batchingKey, List<? extends BatchedTask> tasks, String tasksSummary) {
             ClusterStateTaskExecutor<Object> taskExecutor = (ClusterStateTaskExecutor<Object>) batchingKey;
             List<UpdateTask> updateTasks = (List<UpdateTask>) tasks;
+            //UpdateTask 最后调用到这
             runTasks(new TaskInputs(taskExecutor, updateTasks, tasksSummary));
         }
 
@@ -175,6 +180,7 @@ public class MasterService extends AbstractLifecycleComponent {
         return true;
     }
 
+    //运行任务
     protected void runTasks(TaskInputs taskInputs) {
         final String summary = taskInputs.summary;
         if (!lifecycle.started()) {
@@ -183,6 +189,7 @@ public class MasterService extends AbstractLifecycleComponent {
         }
 
         logger.debug("processing [{}]: execute", summary);
+        //获取 ClusterState
         final ClusterState previousClusterState = state();
 
         if (!previousClusterState.nodes().isLocalNodeElectedMaster() && taskInputs.runOnlyWhenMaster()) {
@@ -195,12 +202,14 @@ public class MasterService extends AbstractLifecycleComponent {
         TaskOutputs taskOutputs = calculateTaskOutputs(taskInputs, previousClusterState, startTimeNS);
         taskOutputs.notifyFailedTasks();
 
+        //有节点加入集群状态就会改变，有节点加入就会重新分片
         if (taskOutputs.clusterStateUnchanged()) {
             taskOutputs.notifySuccessfulTasksOnUnchangedClusterState();
             TimeValue executionTime = TimeValue.timeValueMillis(Math.max(0, TimeValue.nsecToMSec(currentTimeInNanos() - startTimeNS)));
             logger.debug("processing [{}]: took [{}] no change in cluster state", summary, executionTime);
             warnAboutSlowTaskIfNeeded(executionTime, summary);
         } else {
+            //集群状态改变了
             ClusterState newClusterState = taskOutputs.newClusterState;
             if (logger.isTraceEnabled()) {
                 logger.trace("cluster state updated, source [{}]\n{}", summary, newClusterState);
@@ -214,12 +223,14 @@ public class MasterService extends AbstractLifecycleComponent {
                 if (nodesDelta.hasChanges() && logger.isInfoEnabled()) {
                     String nodeSummary = nodesDelta.shortSummary();
                     if (nodeSummary.length() > 0) {
+                        //打印
                         logger.info("{}, reason: {}", summary, nodeSummary);
                     }
                 }
 
                 logger.debug("publishing cluster state version [{}]", newClusterState.version());
                 try {
+                    //更新主节点和加入集群节点的集群状态
                     clusterStatePublisher.accept(clusterChangedEvent, taskOutputs.createAckListener(threadPool, newClusterState));
                 } catch (Discovery.FailedToCommitClusterStateException t) {
                     final long version = newClusterState.version();
@@ -231,6 +242,8 @@ public class MasterService extends AbstractLifecycleComponent {
                     return;
                 }
 
+                //调用任务的监听器回调
+                //关闭选举线程，响应DISCOVERY_JOIN_ACTION_NAME
                 taskOutputs.processedDifferentClusterState(previousClusterState, newClusterState);
 
                 try {
@@ -266,9 +279,12 @@ public class MasterService extends AbstractLifecycleComponent {
         }
     }
 
+    //
     public TaskOutputs calculateTaskOutputs(TaskInputs taskInputs, ClusterState previousClusterState, long startTimeNS) {
         ClusterTasksResult<Object> clusterTasksResult = executeTasks(taskInputs, startTimeNS, previousClusterState);
+        //增加版本，如果数据改变了
         ClusterState newClusterState = patchVersions(previousClusterState, clusterTasksResult);
+        //封装TaskOutputs返回
         return new TaskOutputs(taskInputs, previousClusterState, newClusterState, getNonFailedTasks(taskInputs, clusterTasksResult),
             clusterTasksResult.executionResults);
     }
@@ -276,13 +292,17 @@ public class MasterService extends AbstractLifecycleComponent {
     private ClusterState patchVersions(ClusterState previousClusterState, ClusterTasksResult<?> executionResult) {
         ClusterState newClusterState = executionResult.resultingState;
 
+        //如果状态不一致
         if (previousClusterState != newClusterState) {
             // only the master controls the version numbers
+            //增加版本
             Builder builder = ClusterState.builder(newClusterState).incrementVersion();
+            //如果路由表改变，版本加1
             if (previousClusterState.routingTable() != newClusterState.routingTable()) {
                 builder.routingTable(RoutingTable.builder(newClusterState.routingTable())
                     .version(newClusterState.routingTable().version() + 1).build());
             }
+            //如果元数据改变，版本加1
             if (previousClusterState.metaData() != newClusterState.metaData()) {
                 builder.metaData(MetaData.builder(newClusterState.metaData()).version(newClusterState.metaData().version() + 1));
             }
@@ -633,10 +653,13 @@ public class MasterService extends AbstractLifecycleComponent {
         }
     }
 
+    //
     protected ClusterTasksResult<Object> executeTasks(TaskInputs taskInputs, long startTimeNS, ClusterState previousClusterState) {
         ClusterTasksResult<Object> clusterTasksResult;
         try {
+            //task 列表
             List<Object> inputs = taskInputs.updateTasks.stream().map(tUpdateTask -> tUpdateTask.task).collect(Collectors.toList());
+            //返回
             clusterTasksResult = taskInputs.executor.execute(previousClusterState, inputs);
             if (previousClusterState != clusterTasksResult.resultingState &&
                 previousClusterState.nodes().isLocalNodeElectedMaster() &&
@@ -678,6 +701,7 @@ public class MasterService extends AbstractLifecycleComponent {
         return clusterTasksResult;
     }
 
+    //获取没有失败的任务
     public List<Batcher.UpdateTask> getNonFailedTasks(TaskInputs taskInputs,
                                                       ClusterTasksResult<Object> clusterTasksResult) {
         return taskInputs.updateTasks.stream().filter(updateTask -> {
@@ -715,6 +739,8 @@ public class MasterService extends AbstractLifecycleComponent {
      * Submits a batch of cluster state update tasks; submitted updates are guaranteed to be processed together,
      * potentially with more tasks of the same executor.
      *
+     * 提交状态更新任务
+     *
      * @param source   the source of the cluster state update task
      * @param tasks    a map of update tasks and their corresponding listeners
      * @param config   the cluster state update task configuration
@@ -731,6 +757,7 @@ public class MasterService extends AbstractLifecycleComponent {
             return;
         }
         try {
+            //封装成  Batcher.UpdateTask 列表
             List<Batcher.UpdateTask> safeTasks = tasks.entrySet().stream()
                 .map(e -> taskBatcher.new UpdateTask(config.priority(), source, e.getKey(), safe(e.getValue()), executor))
                 .collect(Collectors.toList());

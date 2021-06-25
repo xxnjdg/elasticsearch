@@ -68,6 +68,7 @@ public class PathTrie<T> {
 
     private final Decoder decoder;
     private final TrieNode root;
+    // uri = /
     private T rootValue;
 
     private static final String SEPARATOR = "/";
@@ -79,13 +80,17 @@ public class PathTrie<T> {
     }
 
     public class TrieNode {
+        //uri
         private transient String key;
+        //uri 处理器
         private transient T value;
         private boolean isWildcard;
         private final String wildcard;
 
+        //uri {} 里面的内容
         private transient String namedWildcard;
 
+        //孩子
         private Map<String, TrieNode> children;
 
         public TrieNode(String key, T value, String wildcard) {
@@ -376,6 +381,7 @@ public class PathTrie<T> {
         private final List<TrieMatchingMode> modes;
         private final Supplier<Map<String, String>> paramSupplier;
         private final PathTrie<T> trie;
+        //uri
         private final String path;
 
         PathTrieIterator(PathTrie trie, String path, Supplier<Map<String, String>> paramSupplier) {

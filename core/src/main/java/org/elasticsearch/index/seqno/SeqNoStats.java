@@ -34,8 +34,11 @@ public class SeqNoStats implements ToXContentFragment, Writeable {
     private static final String LOCAL_CHECKPOINT = "local_checkpoint";
     private static final String GLOBAL_CHECKPOINT = "global_checkpoint";
 
+    //-1
     private final long maxSeqNo;
+    //-1
     private final long localCheckpoint;
+    //-2
     private final long globalCheckpoint;
 
     public SeqNoStats(long maxSeqNo, long localCheckpoint, long globalCheckpoint) {

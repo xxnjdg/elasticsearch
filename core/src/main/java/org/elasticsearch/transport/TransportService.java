@@ -77,10 +77,12 @@ public class TransportService extends AbstractLifecycleComponent {
     public static final String HANDSHAKE_ACTION_NAME = "internal:transport/handshake";
 
     private final CountDownLatch blockIncomingRequestsLatch = new CountDownLatch(1);
+    //Netty4Transport
     protected final Transport transport;
     protected final ThreadPool threadPool;
     protected final ClusterName clusterName;
     protected final TaskManager taskManager;
+    //this::sendRequestInternal
     private final TransportInterceptor.AsyncSender asyncSender;
     private final Function<BoundTransportAddress, DiscoveryNode> localNodeFactory;
     private final boolean connectToRemoteCluster;
@@ -88,6 +90,7 @@ public class TransportService extends AbstractLifecycleComponent {
     volatile Map<String, RequestHandlerRegistry> requestHandlers = Collections.emptyMap();
     final Object requestHandlerMutex = new Object();
 
+    //列表，处理中会把 RequestHolder 加入
     final ConcurrentMapLong<RequestHolder> clientHandlers = ConcurrentCollections.newConcurrentMapLongWithAggressiveConcurrency();
 
     final CopyOnWriteArrayList<TransportConnectionListener> connectionListeners = new CopyOnWriteArrayList<>();
@@ -122,6 +125,7 @@ public class TransportService extends AbstractLifecycleComponent {
     private final RemoteClusterService remoteClusterService;
 
     /** if set will call requests sent to this id to shortcut and executed locally */
+    //本地节点
     volatile DiscoveryNode localNode = null;
     private final Transport.Connection localNodeConnection = new Transport.Connection() {
         @Override
@@ -214,6 +218,7 @@ public class TransportService extends AbstractLifecycleComponent {
                 logger.info("profile [{}]: {}", entry.getKey(), entry.getValue());
             }
         }
+        //创建本地节点
         localNode = localNodeFactory.apply(transport.boundAddress());
         registerRequestHandler(
             HANDSHAKE_ACTION_NAME,
@@ -324,6 +329,7 @@ public class TransportService extends AbstractLifecycleComponent {
         if (isLocalNode(node)) {
             return;
         }
+        //握手
         transport.connectToNode(node, connectionProfile, (newConnection, actualProfile) -> {
             // We don't validate cluster names to allow for tribe node connections.
             final DiscoveryNode remote = handshake(newConnection, actualProfile.getHandshakeTimeout().millis(), cn -> true);
@@ -343,6 +349,7 @@ public class TransportService extends AbstractLifecycleComponent {
         if (isLocalNode(node)) {
             return localNodeConnection;
         } else {
+            //不是本地节点
             return transport.openConnection(node, profile);
         }
     }
@@ -391,6 +398,7 @@ public class TransportService extends AbstractLifecycleComponent {
                     return new HandshakeResponse();
                 }
             });
+            //发送
             sendRequest(connection, HANDSHAKE_ACTION_NAME, HandshakeRequest.INSTANCE,
                 TransportRequestOptions.builder().withTimeout(handshakeTimeout).build(), futureHandler);
             response = futureHandler.txGet();
@@ -404,6 +412,7 @@ public class TransportService extends AbstractLifecycleComponent {
             throw new IllegalStateException("handshake failed, incompatible version [" + response.version + "] - " + node);
         }
 
+        //返回ping回来节点信息
         return response.discoveryNode;
     }
 
@@ -506,6 +515,7 @@ public class TransportService extends AbstractLifecycleComponent {
         }
     }
 
+    //发送 Request
     public final <T extends TransportResponse> void sendRequest(final Transport.Connection connection, final String action,
                                                                 final TransportRequest request,
                                                                 final TransportRequestOptions options,
@@ -562,6 +572,7 @@ public class TransportService extends AbstractLifecycleComponent {
 
     }
 
+    //发送 Request
     private <T extends TransportResponse> void sendRequestInternal(final Transport.Connection connection, final String action,
                                                                    final TransportRequest request,
                                                                    final TransportRequestOptions options,
@@ -569,7 +580,9 @@ public class TransportService extends AbstractLifecycleComponent {
         if (connection == null) {
             throw new IllegalStateException("can't send request to a null connection");
         }
+        //获取要进行通信的 DiscoveryNode
         DiscoveryNode node = connection.getNode();
+        //生成 requestId
         final long requestId = transport.newRequestId();
         final TimeoutHandler timeoutHandler;
         try {
@@ -577,6 +590,7 @@ public class TransportService extends AbstractLifecycleComponent {
             if (options.timeout() == null) {
                 timeoutHandler = null;
             } else {
+                //如果超时时间存在
                 timeoutHandler = new TimeoutHandler(requestId);
             }
             Supplier<ThreadContext.StoredContext> storedContextSupplier = threadPool.getThreadContext().newRestorableContext(true);
@@ -589,8 +603,10 @@ public class TransportService extends AbstractLifecycleComponent {
             }
             if (timeoutHandler != null) {
                 assert options.timeout() != null;
+                //超时执行 timeoutHandler
                 timeoutHandler.future = threadPool.schedule(options.timeout(), ThreadPool.Names.GENERIC, timeoutHandler);
             }
+            //发送
             connection.sendRequest(requestId, action, request, options); // local node optimization happens upstream
         } catch (final Exception e) {
             // usually happen either because we failed to connect to the node
@@ -631,6 +647,7 @@ public class TransportService extends AbstractLifecycleComponent {
         }
     }
 
+    //本地节点给自己发送 Request
     private void sendLocalRequest(long requestId, final String action, final TransportRequest request, TransportRequestOptions options) {
         final DirectResponseChannel channel = new DirectResponseChannel(logger, localNode, action, requestId, this, threadPool);
         try {
@@ -801,12 +818,14 @@ public class TransportService extends AbstractLifecycleComponent {
      * found.
      */
     public TransportResponseHandler onResponseReceived(final long requestId) {
+        //移除
         RequestHolder holder = clientHandlers.remove(requestId);
 
         if (holder == null) {
             checkForTimeout(requestId);
             return null;
         }
+        //取消执行超时处理器
         holder.cancelTimeout();
         if (traceEnabled() && shouldTraceAction(holder.action())) {
             traceReceivedResponse(requestId, holder.connection().getNode(), holder.action());
@@ -950,6 +969,7 @@ public class TransportService extends AbstractLifecycleComponent {
          * cancels timeout handling. this is a best effort only to avoid running it. remove the requestId from {@link #clientHandlers}
          * to make sure this doesn't run.
          */
+        //取消定时任务
         public void cancel() {
             assert clientHandlers.get(requestId) == null :
                 "cancel must be called after the requestId [" + requestId + "] has been removed from clientHandlers";
