@@ -120,6 +120,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
     //"{\"_default_\":{}}"
     private volatile String defaultMappingSource;
 
+    //key = type 名字 value = 对应 DocumentMapper
     private volatile Map<String, DocumentMapper> mappers = emptyMap();
 
     private volatile FieldTypeLookup fieldTypes;
@@ -294,9 +295,11 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             if (onlyUpdateIfNeeded) {
                 DocumentMapper existingMapper = documentMapper(mappingMetaData.type());
                 if (existingMapper == null || mappingMetaData.source().equals(existingMapper.mappingSource()) == false) {
+                    // indexMetaData 数据和 MapperService 不一样 以 indexMetaData 更新为主 map
                     map.put(mappingMetaData.type(), mappingMetaData.source());
                 }
             } else {
+                //添加  indexMetaData
                 map.put(mappingMetaData.type(), mappingMetaData.source());
             }
         }
@@ -307,6 +310,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         DocumentMapper defaultMapper = null;
         String defaultMappingSource = null;
 
+        //如果 mappings 包含 DEFAULT_MAPPING,解析 defaultMapper 和 defaultMappingSource
         if (mappings.containsKey(DEFAULT_MAPPING)) {
             // verify we can parse it
             // NOTE: never apply the default here
@@ -771,6 +775,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             throw new TypeMissingException(index(),
                     new IllegalStateException("trying to auto create mapping, but dynamic mapping is disabled"), type);
         }
+        //创建映射,这个mapping没有映射自定义json数据
         mapper = parse(type, null, true);
         return new DocumentMapperForType(mapper, mapper.mapping());
     }

@@ -38,11 +38,13 @@ public class ParsedDocument {
 
     private final String routing;
 
+    //文档集合
     private final List<Document> documents;
 
     private BytesReference source;
     private XContentType xContentType;
 
+    //如果没有新的字段mapping生成，这个字段为空
     private Mapping dynamicMappingsUpdate;
 
     private String parent;

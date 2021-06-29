@@ -498,14 +498,20 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
      * @throws IOException if adding the operation to the translog resulted in an I/O exception
      */
     public Location add(final Operation operation) throws IOException {
+        //把当前数组缓存当作输入流
         final ReleasableBytesStreamOutput out = new ReleasableBytesStreamOutput(bigArrays);
         try {
+            //当前位置,开始位置
             final long start = out.position();
+            //跳过前面4字节
             out.skip(Integer.BYTES);
             writeOperationNoSize(new BufferedChecksumStreamOutput(out), operation);
+            //结束位置
             final long end = out.position();
+            //数据一共长度
             final int operationSize = (int) (end - Integer.BYTES - start);
             out.seek(start);
+            //在前面跳过的4字节写入数据总共长度
             out.writeInt(operationSize);
             out.seek(end);
             final ReleasablePagedBytesReference bytes = out.bytes();
@@ -784,7 +790,9 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
     public static class Location implements Comparable<Location> {
 
         public final long generation;
+        //translog 文件开始位置偏移
         public final long translogLocation;
+        //数据长度
         public final int size;
 
         public Location(long generation, long translogLocation, int size) {
@@ -924,11 +932,13 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
          * Writes the type and translog operation to the given stream
          */
         static void writeOperation(final StreamOutput output, final Operation operation) throws IOException {
+            //写入操作
             output.writeByte(operation.opType().id());
             switch(operation.opType()) {
                 case CREATE:
                     // the serialization logic in Index was identical to that of Create when create was deprecated
                 case INDEX:
+                    //写入相应数据
                     ((Index) operation).write(output);
                     break;
                 case DELETE:
@@ -1504,6 +1514,7 @@ public class Translog extends AbstractIndexShardComponent implements IndexShardC
         out.resetDigest();
         Translog.Operation.writeOperation(out, op);
         long checksum = out.getChecksum();
+        //写入 checksum
         out.writeInt((int) checksum);
     }
 

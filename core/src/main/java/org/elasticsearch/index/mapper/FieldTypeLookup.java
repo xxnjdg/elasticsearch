@@ -79,6 +79,7 @@ class FieldTypeLookup implements Iterable<MappedFieldType> {
      */
     public FieldTypeLookup copyAndAddAll(String type, Collection<FieldMapper> fieldMappers, boolean updateAllTypes) {
         Objects.requireNonNull(type, "type must not be null");
+        //type 不能等于 _default_
         if (MapperService.DEFAULT_MAPPING.equals(type)) {
             throw new IllegalArgumentException("Default mappings should not be added to the lookup");
         }

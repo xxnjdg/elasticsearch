@@ -54,6 +54,7 @@ final class DocumentParser {
         this.docMapper = docMapper;
     }
 
+    //解析 ParsedDocument
     ParsedDocument parseDocument(SourceToParse source) throws MapperParsingException {
         validateType(source);
 
@@ -79,6 +80,7 @@ final class DocumentParser {
 
         reverseOrder(context);
 
+        //返回,createDynamicUpdate context如果有新字段 mapping createDynamicUpdate 将创建新 Mapping
         return parsedDocument(source, context, createDynamicUpdate(mapping, docMapper, context.getDynamicMappers()));
     }
 
@@ -86,7 +88,7 @@ final class DocumentParser {
         //是否是空文档
         final boolean emptyDoc = isEmptyDoc(mapping, parser);
 
-        //增加一些缺省字段
+        //增加一些缺省字段,加入 context.document
         for (MetadataFieldMapper metadataMapper : mapping.metadataMappers) {
             metadataMapper.preParse(context);
         }
@@ -181,8 +183,10 @@ final class DocumentParser {
         return new MapperParsingException("failed to parse", e);
     }
 
+    //分割名
     private static String[] splitAndValidatePath(String fullFieldPath) {
         if (fullFieldPath.contains(".")) {
+            //按 . 分割
             String[] parts = fullFieldPath.split("\\.");
             for (String part : parts) {
                 if (Strings.hasText(part) == false) {
@@ -195,6 +199,7 @@ final class DocumentParser {
                             "object field starting or ending with a [.] makes object resolution ambiguous: [" + fullFieldPath + "]");
                 }
             }
+            //名子数组
             return parts;
         } else {
             if (Strings.isEmpty(fullFieldPath)) {
@@ -260,6 +265,7 @@ final class DocumentParser {
         popMappers(parentMappers, 1, true);
         assert parentMappers.size() == 1;
 
+        //返回新 mapping
         return mapping.mappingUpdate(parentMappers.get(0));
     }
 
@@ -415,6 +421,7 @@ final class DocumentParser {
                 //解析字段值
                 parseValue(context, mapper, currentFieldName, token);
             }
+            //下一个
             token = parser.nextToken();
         }
     }
@@ -491,6 +498,7 @@ final class DocumentParser {
             parseObjectOrNested(context, (ObjectMapper) mapper);
         } else {
             FieldMapper fieldMapper = (FieldMapper)mapper;
+            //动态解析json字段 Field 进入 context
             Mapper update = fieldMapper.parse(context);
             if (update != null) {
                 context.addDynamicMapper(update);
@@ -611,13 +619,15 @@ final class DocumentParser {
             throw new MapperParsingException("object mapping [" + parentMapper.name() + "] trying to serialize a value with no field associated with it, current value [" + context.parser().textOrNull() + "]");
         }
 
+        //分割名
         final String[] paths = splitAndValidatePath(currentFieldName);
         Mapper mapper = getMapper(parentMapper, currentFieldName, paths);
         if (mapper != null) {
+            //开始解析
             parseObjectOrField(context, mapper);
         } else {
             currentFieldName = paths[paths.length - 1];
-            //
+            //如果 Mapper 不存在
             Tuple<Integer, ObjectMapper> parentMapperTuple = getDynamicParentMapper(context, paths, parentMapper);
             parentMapper = parentMapperTuple.v2();
             //解析
@@ -742,6 +752,7 @@ final class DocumentParser {
                 // We refuse to match pure numbers, which are too likely to be
                 // false positives with date formats that include eg.
                 // `epoch_millis` or `YYYY`
+                //是否可以转成日期
                 for (FormatDateTimeFormatter dateTimeFormatter : context.root().dynamicDateTimeFormatters()) {
                     try {
                         dateTimeFormatter.parser().parseMillis(text);
@@ -829,13 +840,16 @@ final class DocumentParser {
             // create a builder of the same type
             builder = createBuilderFromFieldType(context, existingFieldType, currentFieldName);
         } else {
+            //动态创建 builder
             builder = createBuilderFromDynamicValue(context, token, currentFieldName);
         }
+        //创建 Mapper
         Mapper mapper = builder.build(builderContext);
         if (existingFieldType != null) {
             // try to not introduce a conflict
             mapper = mapper.updateFieldType(Collections.singletonMap(path, existingFieldType));
         }
+        //添加进context
         context.addDynamicMapper(mapper);
 
         parseObjectOrField(context, mapper);
@@ -961,6 +975,7 @@ final class DocumentParser {
     // looks up a child mapper, but takes into account field names that expand to objects
     private static Mapper getMapper(ObjectMapper objectMapper, String fieldName, String[] subfields) {
         for (int i = 0; i < subfields.length - 1; ++i) {
+            //
             Mapper mapper = objectMapper.getMapper(subfields[i]);
             if (mapper == null || (mapper instanceof ObjectMapper) == false) {
                 return null;

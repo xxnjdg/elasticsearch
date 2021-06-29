@@ -59,6 +59,7 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
     //最新一次 Checkpoint
     private volatile Checkpoint lastSyncedCheckpoint;
     /* the number of translog operations written to this file */
+    //写入文件次数
     private volatile int operationCounter;
     /* if we hit an exception that we can't recover from we assign it to this var and ship it with every AlreadyClosedException we throw */
     private volatile Exception tragedy;
@@ -66,9 +67,12 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
     //translog-1.tlog 文件输出流
     private final OutputStream outputStream;
     /* the total offset of this file including the bytes written to the file as well as into the buffer */
+    //translog-1.tlog 文件写指针
     private volatile long totalOffset;
 
+    //最小序号
     private volatile long minSeqNo;
+    //最大序号
     private volatile long maxSeqNo;
 
     //() -> seqNoService.getGlobalCheckpoint()
@@ -186,6 +190,7 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
         ensureOpen();
         final long offset = totalOffset;
         try {
+            //把数据写入translog-1.tlog文件
             data.writeTo(outputStream);
         } catch (final Exception ex) {
             try {
@@ -195,6 +200,7 @@ public class TranslogWriter extends BaseTranslogReader implements Closeable {
             }
             throw ex;
         }
+        //调整写指针
         totalOffset += data.length();
 
         if (minSeqNo == SequenceNumbers.NO_OPS_PERFORMED) {

@@ -21,6 +21,7 @@ package org.elasticsearch.index.mapper;
 
 public class DocumentMapperForType {
     private final DocumentMapper documentMapper;
+    //标志位
     private final Mapping mapping;
 
     public DocumentMapperForType(DocumentMapper documentMapper, Mapping mapping) {

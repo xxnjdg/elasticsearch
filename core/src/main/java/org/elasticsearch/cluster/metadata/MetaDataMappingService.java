@@ -216,14 +216,17 @@ public class MetaDataMappingService extends AbstractComponent {
             Map<Index, MapperService> indexMapperServices = new HashMap<>();
             ClusterTasksResult.Builder<PutMappingClusterStateUpdateRequest> builder = ClusterTasksResult.builder();
             try {
+                //遍历请求
                 for (PutMappingClusterStateUpdateRequest request : tasks) {
                     try {
+                        //遍历索引
                         for (Index index : request.indices()) {
                             final IndexMetaData indexMetaData = currentState.metaData().getIndexSafe(index);
                             if (indexMapperServices.containsKey(indexMetaData.getIndex()) == false) {
                                 MapperService mapperService = indicesService.createIndexMapperService(indexMetaData);
                                 indexMapperServices.put(index, mapperService);
                                 // add mappings for all types, we need them for cross-type validation
+                                //把  indexMetaData 合并进来
                                 mapperService.merge(indexMetaData, MergeReason.MAPPING_RECOVERY, request.updateAllTypes());
                             }
                         }
@@ -241,14 +244,18 @@ public class MetaDataMappingService extends AbstractComponent {
 
         private ClusterState applyRequest(ClusterState currentState, PutMappingClusterStateUpdateRequest request,
                                           Map<Index, MapperService> indexMapperServices) throws IOException {
+            //获取 tyep
             String mappingType = request.type();
             CompressedXContent mappingUpdateSource = new CompressedXContent(request.source());
             final MetaData metaData = currentState.metaData();
             final List<IndexMetaData> updateList = new ArrayList<>();
+            //遍历索引
             for (Index index : request.indices()) {
+                //获取 MapperService
                 MapperService mapperService = indexMapperServices.get(index);
                 // IMPORTANT: always get the metadata from the state since it get's batched
                 // and if we pull it from the indexService we might miss an update etc.
+                //获取当前 IndexMetaData
                 final IndexMetaData indexMetaData = currentState.getMetaData().getIndexSafe(index);
 
                 // this is paranoia... just to be sure we use the exact same metadata tuple on the update that
@@ -256,6 +263,7 @@ public class MetaDataMappingService extends AbstractComponent {
                 updateList.add(indexMetaData);
                 // try and parse it (no need to add it here) so we can bail early in case of parsing exception
                 DocumentMapper newMapper;
+                //是否存在 DocumentMapper
                 DocumentMapper existingMapper = mapperService.documentMapper(request.type());
                 if (MapperService.DEFAULT_MAPPING.equals(request.type())) {
                     // _default_ types do not go through merging, but we do test the new settings. Also don't apply the old default
@@ -308,6 +316,7 @@ public class MetaDataMappingService extends AbstractComponent {
                 if (existingMapper != null) {
                     existingSource = existingMapper.mappingSource();
                 }
+                //
                 DocumentMapper mergedMapper = mapperService.merge(mappingType, mappingUpdateSource, MergeReason.MAPPING_UPDATE, request.updateAllTypes());
                 CompressedXContent updatedSource = mergedMapper.mappingSource();
 
@@ -355,6 +364,7 @@ public class MetaDataMappingService extends AbstractComponent {
     }
 
     public void putMapping(final PutMappingClusterStateUpdateRequest request, final ActionListener<ClusterStateUpdateResponse> listener) {
+        //提交任务
         clusterService.submitStateUpdateTask("put-mapping",
                 request,
                 ClusterStateTaskConfig.build(Priority.HIGH, request.masterNodeTimeout()),

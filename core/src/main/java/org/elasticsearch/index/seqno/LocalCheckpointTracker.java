@@ -44,7 +44,7 @@ public class LocalCheckpointTracker {
     /**
      * The current local checkpoint, i.e., all sequence numbers no more than this number have been completed.
      */
-    //SequenceNumbers.NO_OPS_PERFORMED = -1
+    //SequenceNumbers.NO_OPS_PERFORMED = -1 0
     volatile long checkpoint;
 
     /**
@@ -91,6 +91,7 @@ public class LocalCheckpointTracker {
      */
     public synchronized void markSeqNoAsCompleted(final long seqNo) {
         // make sure we track highest seen sequence number
+        //更新 nextSeqNo
         if (seqNo >= nextSeqNo) {
             nextSeqNo = seqNo + 1;
         }
@@ -102,6 +103,7 @@ public class LocalCheckpointTracker {
         final int offset = seqNoToBitSetOffset(seqNo);
         bitSet.set(offset);
         if (seqNo == checkpoint + 1) {
+            //更新本地 Checkpoint
             updateCheckpoint();
         }
     }

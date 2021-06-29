@@ -304,11 +304,15 @@ public abstract class Engine implements Closeable {
      **/
     public abstract static class Result {
         private final Operation.TYPE operationType;
+        //版本号
         private final long version;
+        //序号
         private final long seqNo;
+        //是否失败
         private final Exception failure;
         private final SetOnce<Boolean> freeze = new SetOnce<>();
         private Translog.Location translogLocation;
+        //花费时间
         private long took;
 
         protected Result(Operation.TYPE operationType, Exception failure, long version, long seqNo) {

@@ -66,6 +66,7 @@ public class TextFieldMapper extends FieldMapper {
         public static final int POSITION_INCREMENT_GAP = 100;
     }
 
+    //构造 TextFieldMapper
     public static class Builder extends FieldMapper.Builder<Builder, TextFieldMapper> {
 
         private int positionIncrementGap = POSITION_INCREMENT_GAP_USE_ANALYZER;
@@ -339,6 +340,7 @@ public class TextFieldMapper extends FieldMapper {
     @Override
     protected void parseCreateField(ParseContext context, List<IndexableField> fields) throws IOException {
         final String value;
+        //获取json 值
         if (context.externalValueSet()) {
             value = context.externalValue().toString();
         } else {

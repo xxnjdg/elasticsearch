@@ -243,6 +243,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
             Iterator<Map.Entry<String, Object>> iterator = propsNode.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<String, Object> entry = iterator.next();
+                //字段名
                 String fieldName = entry.getKey();
                 // Should accept empty arrays, as a work around for when the
                 // user can't provide an empty Map. (PHP for example)
@@ -324,6 +325,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
     //false
     private Boolean includeInAll;
 
+    //动态解析后添加进来 key = json字段名 value = 根据 json字段值动态解析 Mapper
     private volatile CopyOnWriteHashMap<String, Mapper> mappers;
 
     ObjectMapper(String name, String fullPath, boolean enabled, Nested nested, Dynamic dynamic,
@@ -518,7 +520,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
     }
 
     public void toXContent(XContentBuilder builder, Params params, ToXContent custom) throws IOException {
-        //写入索引名
+        //写入type名
         builder.startObject(simpleName());
         if (nested.isNested()) {
             builder.field("type", NESTED_CONTENT_TYPE);
@@ -557,6 +559,7 @@ public class ObjectMapper extends Mapper implements Cloneable {
         });
 
         int count = 0;
+        //遍历 mapper 写入
         for (Mapper mapper : sortedMappers) {
             if (!(mapper instanceof MetadataFieldMapper)) {
                 if (count++ == 0) {

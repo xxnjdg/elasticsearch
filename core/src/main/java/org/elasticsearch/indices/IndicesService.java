@@ -471,6 +471,7 @@ public class IndicesService extends AbstractLifecycleComponent
      *
      * Note: the returned {@link MapperService} should be closed when unneeded.
      */
+    //创建 MapperService
     public synchronized MapperService createIndexMapperService(IndexMetaData indexMetaData) throws IOException {
         final IndexSettings idxSettings = new IndexSettings(indexMetaData, this.settings, indexScopeSetting);
         final IndexModule indexModule = new IndexModule(idxSettings, analysisRegistry);

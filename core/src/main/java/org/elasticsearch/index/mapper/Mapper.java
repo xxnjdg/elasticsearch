@@ -33,6 +33,7 @@ import java.util.function.Supplier;
 
 public abstract class Mapper implements ToXContentFragment, Iterable<Mapper> {
 
+    //构建上下文
     public static class BuilderContext {
         private final Settings indexSettings;
         private final ContentPath contentPath;
@@ -74,6 +75,7 @@ public abstract class Mapper implements ToXContentFragment, Iterable<Mapper> {
         public abstract Y build(BuilderContext context);
     }
 
+    //解析
     public interface TypeParser {
 
         class ParserContext {

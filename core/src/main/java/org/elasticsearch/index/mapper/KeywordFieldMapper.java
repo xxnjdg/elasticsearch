@@ -305,6 +305,7 @@ public final class KeywordFieldMapper extends FieldMapper {
     @Override
     protected void parseCreateField(ParseContext context, List<IndexableField> fields) throws IOException {
         String value;
+        //获取值
         if (context.externalValueSet()) {
             value = context.externalValue().toString();
         } else {

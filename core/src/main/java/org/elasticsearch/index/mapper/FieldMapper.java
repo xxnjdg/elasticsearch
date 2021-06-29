@@ -231,6 +231,7 @@ public abstract class FieldMapper extends Mapper implements Cloneable {
         }
 
         protected void setupFieldType(BuilderContext context) {
+            //设置fieldType名字
             fieldType.setName(buildFullName(context));
             if (context.indexCreatedVersion().before(Version.V_5_0_0_alpha1)) {
                 fieldType.setOmitNorms(fieldType.omitNorms() && fieldType.boost() == 1.0f);
@@ -240,6 +241,7 @@ public abstract class FieldMapper extends Mapper implements Cloneable {
                 fieldType.setSearchAnalyzer(Lucene.KEYWORD_ANALYZER);
             }
             boolean defaultDocValues = defaultDocValues(context.indexCreatedVersion());
+            //设置是否是 DocValues
             defaultFieldType.setHasDocValues(defaultDocValues);
             if (docValuesSet == false) {
                 fieldType.setHasDocValues(defaultDocValues);
@@ -541,6 +543,7 @@ public abstract class FieldMapper extends Mapper implements Cloneable {
             }
         }
 
+        //keyword KeywordFieldMapper
         private final ImmutableOpenMap<String, FieldMapper> mappers;
 
         private MultiFields(ImmutableOpenMap<String, FieldMapper> mappers) {
